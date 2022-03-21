@@ -1,6 +1,6 @@
 {
   "name": "ts-migrate",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/airbnb/ts-migrate.git",
@@ -9,13 +9,26 @@
   "bugs": {
     "url": "https://github.com/airbnb/ts-migrate/issues"
   },
+  "bin": {
+    "ts-migrate": "build/src/cli.js"
+  },
   "private": true,
   "description": "ts-migrate monorepo",
   "scripts": {
-    "bootstrap": "lerna bootstrap",
-    "build": "lerna run build",
+    "bootstrap": "echo 'not implemented'",
+    "build": "tsc -p tsconfig.json",
     "lint": "lerna run lint",
-    "test": "lerna run test"
+    "test": "lerna run test",
+    "clean": "rm -rf build",
+    "postinstall": "npm run build"
+  },
+  "dependencies": {
+    "@ts-morph/bootstrap": "^0.9.1",
+    "json5-writer": "^0.2.0",
+    "loglevel": "^1.8.0",
+    "pretty-ms": "^7.0.1",
+    "typescript": "^4.6.2",
+    "yargs": "^17.3.1"
   },
   "devDependencies": {
     "@types/eslint": "^7.2.2",
@@ -43,11 +56,7 @@
     "prettier": "^2.4.1",
     "react": "^16.12.0",
     "rimraf": "^3.0.0",
-    "ts-jest": "^26.3.0",
-    "typescript": "4.6.2"
+    "ts-jest": "^26.3.0"
   },
-  "workspaces": [
-    "packages/*"
-  ],
   "license": "MIT"
 }
