@@ -19,7 +19,8 @@ const tsIgnorePlugin: Plugin<Options> = {
   name: 'ts-ignore',
 
   run({ getLanguageService, fileName, sourceFile, options }) {
-    const diagnostics = getLanguageService()
+    const languageService: ts.LanguageService = getLanguageService();
+    const diagnostics = languageService
       .getSemanticDiagnostics(fileName)
       .filter(isDiagnosticWithLinePosition);
     return getTextWithIgnores(sourceFile, diagnostics, options);

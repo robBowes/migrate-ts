@@ -1,10 +1,11 @@
-import { createProject, Project } from '@ts-morph/bootstrap';
-import ts from 'typescript';
-import path from 'path';
-import log from 'updatable-log';
-import MigrateConfig from './MigrateConfig';
-import PerfTimer from '../utils/PerfTimer';
-import { PluginParams } from '../../types';
+/* eslint-disable */
+import { createProject, Project,ts as tsm } from "@ts-morph/bootstrap";
+import ts from "typescript";
+import path from "path";
+import log from "updatable-log";
+import MigrateConfig from "./MigrateConfig";
+import PerfTimer from "../utils/PerfTimer";
+import { PluginParams } from "../../types";
 
 interface MigrateParams {
   rootDir: string;
@@ -20,7 +21,7 @@ export default async function migrate({
   sources,
 }: MigrateParams): Promise<number> {
   let exitCode = 0;
-  log.info(`TypeScript version: ${ts.version}`);
+  log.info(`TypeScript version: ${ts.version}, ts-morph version is ${tsm.version} `);
 
   const serverInitTimer = new PerfTimer();
 
@@ -28,10 +29,13 @@ export default async function migrate({
   if (sources !== undefined) {
     sources = Array.isArray(sources) ? sources : [sources];
     sources = sources.map((source) => path.join(rootDir, source));
-    log.info(`Ignoring sources from tsconfig.json, using the ones provided manually instead.`);
+    log.info(
+      `Ignoring sources from tsconfig.json, using the ones provided manually instead.`
+    );
   }
 
-  const tsConfigFilePath = path.join(tsConfigDir, 'tsconfig.json');
+  const tsConfigFilePath = path.join(tsConfigDir, "tsconfig.json");
+  console.log({ tsConfigFilePath });
   const project = await createProject({
     tsConfigFilePath,
     skipAddingFilesFromTsConfig: sources !== undefined,
@@ -46,11 +50,11 @@ export default async function migrate({
 
   log.info(`Initialized tsserver project in ${serverInitTimer.elapsedStr()}.`);
 
-  log.info('Start...');
+  log.info("Start...");
   const pluginsTimer = new PerfTimer();
   const updatedSourceFiles = new Set<string>();
   const originalSourceFilesToMigrate = new Set<string>(
-    getSourceFilesToMigrate(project).map((file) => file.fileName),
+    getSourceFilesToMigrate(project).map((file) => file.fileName)
   );
 
   for (let i = 0; i < config.plugins.length; i += 1) {
@@ -58,13 +62,15 @@ export default async function migrate({
 
     const pluginLogPrefix = `[${plugin.name}]`;
     const pluginTimer = new PerfTimer();
-    log.info(`${pluginLogPrefix} Plugin ${i + 1} of ${config.plugins.length}. Start...`);
-
-    const sourceFiles = getSourceFilesToMigrate(project).filter(({ fileName }) =>
-      originalSourceFilesToMigrate.has(fileName),
+    log.info(
+      `${pluginLogPrefix} Plugin ${i + 1} of ${config.plugins.length}. Start...`
     );
 
-    // eslint-disable-next-line no-restricted-syntax
+    const sourceFiles = getSourceFilesToMigrate(project).filter(
+      ({ fileName }) => originalSourceFilesToMigrate.has(fileName)
+    );
+
+
     for (const sourceFile of sourceFiles) {
       const { fileName } = sourceFile;
       // const fileTimer = new PerfTimer();
@@ -82,9 +88,8 @@ export default async function migrate({
         getLanguageService,
       };
       try {
-        // eslint-disable-next-line no-await-in-loop
         const newText = await plugin.run(params);
-        if (typeof newText === 'string' && newText !== sourceFile.text) {
+        if (typeof newText === "string" && newText !== sourceFile.text) {
           project.updateSourceFile(fileName, newText);
           updatedSourceFiles.add(sourceFile.fileName);
         }
@@ -98,7 +103,11 @@ export default async function migrate({
     log.info(`${pluginLogPrefix} Finished in ${pluginTimer.elapsedStr()}.`);
   }
 
-  log.info(`Finished in ${pluginsTimer.elapsedStr()}, for ${config.plugins.length} plugin(s).`);
+  log.info(
+    `Finished in ${pluginsTimer.elapsedStr()}, for ${
+      config.plugins.length
+    } plugin(s).`
+  );
 
   const writeTimer = new PerfTimer();
 
@@ -107,11 +116,17 @@ export default async function migrate({
   // eslint-disable-next-line no-restricted-syntax
   for (const fileName of updatedSourceFiles) {
     const sourceFile = project.getSourceFileOrThrow(fileName);
-    writes.push(project.fileSystem.writeFile(sourceFile.fileName, sourceFile.text));
+    writes.push(
+      project.fileSystem.writeFile(sourceFile.fileName, sourceFile.text)
+    );
   }
   await Promise.all(writes);
 
-  log.info(`Wrote ${updatedSourceFiles.size} updated file(s) in ${writeTimer.elapsedStr()}.`);
+  log.info(
+    `Wrote ${
+      updatedSourceFiles.size
+    } updated file(s) in ${writeTimer.elapsedStr()}.`
+  );
 
   return exitCode;
 }
