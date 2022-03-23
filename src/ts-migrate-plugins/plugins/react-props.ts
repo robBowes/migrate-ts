@@ -43,7 +43,6 @@ const reactPropsPlugin: Plugin<Options> = {
   name: "react-props",
 
   run({ fileName, sourceFile, options }) {
-    console.log('react props', fileName)
     if (!fileName.endsWith(".tsx")) return undefined;
 
     const updates: SourceTextUpdate[] = [];

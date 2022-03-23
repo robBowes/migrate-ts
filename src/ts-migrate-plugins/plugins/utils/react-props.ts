@@ -1,6 +1,6 @@
 /* eslint-disable no-use-before-define, @typescript-eslint/no-use-before-define, no-restricted-syntax */
 import ts from 'typescript';
-import { getNumComponentsInSourceFile } from './react';
+// import { getNumComponentsInSourceFile } from './react';
 import { collectIdentifiers } from './identifiers';
 import { PropTypesIdentifierMap } from '../react-props';
 
@@ -313,16 +313,10 @@ function getTypeFromPropTypeExpression(
 }
 
 export function createPropsTypeNameGetter(sourceFile: ts.SourceFile) {
-  const numComponentsInFile = getNumComponentsInSourceFile(sourceFile);
   const usedIdentifiers = collectIdentifiers(sourceFile);
 
-  const getPropsTypeName = (componentName: string | undefined) => {
-    let name = '';
-    if (componentName && numComponentsInFile > 1) {
-      name = `${componentName}Props`;
-    } else {
-      name = 'Props';
-    }
+  return function getPropsTypeName (componentName: string | undefined) {
+    const name = `${componentName}Props`;
 
     if (!usedIdentifiers.has(name)) {
       return name;
@@ -335,6 +329,4 @@ export function createPropsTypeNameGetter(sourceFile: ts.SourceFile) {
     }
     return name + i;
   };
-
-  return getPropsTypeName;
 }

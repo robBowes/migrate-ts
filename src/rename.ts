@@ -27,7 +27,7 @@ export default function rename({ rootDir, sources }: RenameParams): number {
   }
 
   if (jsFiles.length === 0) {
-    log.info('No JS/JSX files to rename.');
+    log.warn('No JS/JSX files to rename.');
     return 0;
   }
 
@@ -46,7 +46,7 @@ export default function rename({ rootDir, sources }: RenameParams): number {
     })
     .filter((result): result is { oldFile: string; newFile: string } => !!result.newFile);
 
-  log.info(`Renaming ${toRename.length} JS/JSX files in ${rootDir}...`);
+  log.warn(`Renaming ${toRename.length} JS/JSX files in ${rootDir}...`);
 
   toRename.forEach(({ oldFile, newFile }) => {
     fs.renameSync(oldFile, newFile);
@@ -54,7 +54,7 @@ export default function rename({ rootDir, sources }: RenameParams): number {
 
   updateProjectJson(rootDir);
 
-  log.info('Done.');
+  log.warn('Done.');
   return 0;
 }
 
@@ -63,7 +63,6 @@ function findJSFiles(rootDir: string, configFile: string, sources?: string | str
   if (configFileContents == null) {
     throw new Error(`Failed to read TypeScript config file: ${configFile}`);
   }
-
   const { config, error } = ts.parseConfigFileTextToJson(configFile, configFileContents);
   if (error) {
     const errorMessage = ts.flattenDiagnosticMessageText(error.messageText, ts.sys.newLine);
@@ -91,6 +90,7 @@ function findJSFiles(rootDir: string, configFile: string, sources?: string | str
         allowJs: true,
       },
       include,
+      exclude: [],
     },
     ts.sys,
     rootDir,
@@ -141,5 +141,5 @@ function updateProjectJson(rootDir: string) {
   const writer = json5Writer.load(projectJsonText);
   writer.write(projectJson);
   fs.writeFileSync(projectJsonFile, writer.toSource({ quote: 'double' }), 'utf-8');
-  log.info(`Updated allowedImports in ${projectJsonFile}`);
+  log.warn(`Updated allowedImports in ${projectJsonFile}`);
 }

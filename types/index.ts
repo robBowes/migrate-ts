@@ -1,4 +1,4 @@
-// import ts from 'typescript';
+import ts from 'typescript';
 
 export type Nullable<T> = T | null | undefined;
 export interface PluginParams<TPluginOptions> {
@@ -6,8 +6,8 @@ export interface PluginParams<TPluginOptions> {
   fileName: string;
   rootDir: string;
   text: string;
-  sourceFile:  any//ts.SourceFile;
-  getLanguageService: () => any// ts.LanguageService;
+  sourceFile: ts.SourceFile;
+  getLanguageService: () => ts.LanguageService;
 }
 
 export type PluginResult = string | void;

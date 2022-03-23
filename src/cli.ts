@@ -2,45 +2,48 @@
 
 /* eslint-disable no-await-in-loop, no-restricted-syntax */
 import path from 'path';
-import log from 'loglevel';
+// import log from 'loglevel';
 import yargs from 'yargs';
 
+// import ts from 'typescript';
+// import { readFileSync } from 'fs';
 import {
   addConversionsPlugin,
   declareMissingClassPropertiesPlugin,
   eslintFixPlugin,
   explicitAnyPlugin,
-  hoistClassStaticsPlugin,
+  // hoistClassStaticsPlugin,
   jsDocPlugin,
-  memberAccessibilityPlugin,
+  // memberAccessibilityPlugin,
   reactClassLifecycleMethodsPlugin,
   reactClassStatePlugin,
-  reactDefaultPropsPlugin,
+  // reactDefaultPropsPlugin,
   reactPropsPlugin,
-  reactShapePlugin,
+  // reactShapePlugin,
   stripTSIgnorePlugin,
   tsIgnorePlugin,
   Plugin,
 } from './ts-migrate-plugins';
 import { migrate, MigrateConfig } from './index';
-import rename from './rename';
+import renameFunction from './rename';
 
-const availablePlugins = [
-  addConversionsPlugin,
-  declareMissingClassPropertiesPlugin,
-  eslintFixPlugin,
-  explicitAnyPlugin,
-  hoistClassStaticsPlugin,
-  jsDocPlugin,
-  memberAccessibilityPlugin,
-  reactClassLifecycleMethodsPlugin,
-  reactClassStatePlugin,
-  reactDefaultPropsPlugin,
-  reactPropsPlugin,
-  reactShapePlugin,
-  stripTSIgnorePlugin,
-  tsIgnorePlugin,
-];
+// const availablePlugins = [
+//   addConversionsPlugin,
+//   declareMissingClassPropertiesPlugin,
+//   eslintFixPlugin,
+//   explicitAnyPlugin,
+//   hoistClassStaticsPlugin,
+//   jsDocPlugin,
+//   memberAccessibilityPlugin,
+//   reactClassLifecycleMethodsPlugin,
+//   reactClassStatePlugin,
+//   reactDefaultPropsPlugin,
+//   reactPropsPlugin,
+//   reactShapePlugin,
+//   stripTSIgnorePlugin,
+//   tsIgnorePlugin,
+// ];
+const renameSources = (string: string) => string.replace('.jsx', '.tsx').replace('.js', '.ts');
 
 // eslint-disable-next-line no-unused-expressions
 yargs
@@ -62,7 +65,7 @@ yargs
     (args) => {
       const rootDir = path.resolve(process.cwd(), args.folder);
       const { sources } = args;
-      const exitCode = rename({ rootDir, sources });
+      const exitCode = renameFunction({ rootDir, sources });
       process.exit(exitCode);
     },
   )
@@ -72,91 +75,75 @@ yargs
     (cmd) =>
       cmd
         .positional('folder', { type: 'string' })
-        .choices('defaultAccessibility', ['private', 'protected', 'public'] as const)
-        .string('plugin')
-        .choices(
-          'plugin',
-          availablePlugins.map((p) => p.name),
-        )
-        .describe('plugin', 'Run a specific plugin')
-        .string('privateRegex')
-        .string('protectedRegex')
-        .string('publicRegex')
+
         .string('sources')
+        .boolean('rename')
+        .boolean('ignore')
+        .boolean('reignore')
         .alias('sources', 's')
+        .alias('ignore', 'i')
+        .alias('rename', 'r')
         .describe('sources', 'Path to a subset of your project to rename (globs are ok).')
         .example('migrate /frontend/foo', 'Migrate all the files in /frontend/foo')
         .example(
           '$0 migrate /frontend/foo -s "bar/**/*" -s "node_modules/**/*.d.ts"',
           'Migrate all the files in /frontend/foo/bar, accounting for ambient types from node_modules.',
         )
-        .example(
-          '$0 migrate /frontend/foo --plugin jsdoc',
-          'Migrate JSDoc comments for all the files in /frontend/foo',
-        )
         .require(['folder']),
     async (args) => {
-      console.log('here');
       const rootDir = path.resolve(process.cwd(), args.folder);
-      const { sources } = args;
-      let config: MigrateConfig;
+      const { ignore, rename, reignore } = args;
+      let { sources } = args;
 
-      if (args.plugin) {
-        const plugin = availablePlugins.find((cur) => cur.name === args.plugin);
-        if (!plugin) {
-          log.error(`Could not find a plugin named ${args.plugin}.`);
-          process.exit(1);
-          return;
+      if (rename) {
+        const renameExitCode = renameFunction({ rootDir, sources });
+        if (renameExitCode !== 0) {
+          process.exit(renameExitCode);
         }
-        if (plugin === jsDocPlugin) {
-          const anyAlias = args.aliases === 'tsfixme' ? '$TSFixMe' : undefined;
-          const typeMap = typeof args.typeMap === 'string' ? JSON.parse(args.typeMap) : undefined;
-          config = new MigrateConfig().addPlugin(jsDocPlugin, { anyAlias, typeMap });
-        } else {
-          config = new MigrateConfig().addPlugin(plugin, {});
+        if (typeof sources === 'string') {
+          sources = renameSources(sources);
         }
-      } else {
-        const anyAlias = 'TSFixMe';
-        const anyFunctionAlias = 'TSFixMeFunction';
+      }
 
+      const anyAlias = 'TSFixMe';
+      const anyFunctionAlias = 'TSFixMeFunction';
 
-
-        config = new MigrateConfig()
-          // .addPlugin(stripTSIgnorePlugin, {})
-          // .addPlugin(hoistClassStaticsPlugin, { anyAlias })
-          .addPlugin(reactPropsPlugin, {
-            anyAlias,
-            anyFunctionAlias,
-            // shouldUpdateAirbnbImports: true,
-          })
-          .addPlugin(reactClassStatePlugin, { anyAlias })
-          .addPlugin(reactClassLifecycleMethodsPlugin, { force: true })
-          // .addPlugin(reactDefaultPropsPlugin, {
-          //   useDefaultPropsHelper,
-          // })
-          // .addPlugin(reactShapePlugin, {
-          //   anyAlias,
-          //   anyFunctionAlias,
-          // })
-          .addPlugin(declareMissingClassPropertiesPlugin, { anyAlias })
-          // .addPlugin(memberAccessibilityPlugin, {
-          //   defaultAccessibility,
-          //   privateRegex,
-          //   protectedRegex,
-          //   publicRegex,
-          // })
-          .addPlugin(explicitAnyPlugin, { anyAlias })
-          .addPlugin(addConversionsPlugin, { anyAlias });
+      const config = new MigrateConfig();
+      if (reignore) {
+        config.addPlugin(stripTSIgnorePlugin, {});
+      }
+      // .addPlugin(hoistClassStaticsPlugin, { anyAlias })
+      config
+        .addPlugin(reactPropsPlugin, {
+          anyAlias,
+          anyFunctionAlias,
+          // shouldUpdateAirbnbImports: true,
+        })
+        .addPlugin(reactClassStatePlugin, { anyAlias })
+        .addPlugin(reactClassLifecycleMethodsPlugin, { force: true })
+        // .addPlugin(reactDefaultPropsPlugin, {
+        //   useDefaultPropsHelper,
+        // })
+        // .addPlugin(reactShapePlugin, {
+        //   anyAlias,
+        //   anyFunctionAlias,
+        // })
+        .addPlugin(declareMissingClassPropertiesPlugin, { anyAlias })
+        .addPlugin(jsDocPlugin, { anyAlias, typeMap: undefined })
+        .addPlugin(explicitAnyPlugin, { anyAlias })
+        .addPlugin(addConversionsPlugin, { anyAlias })
         // We need to run eslint-fix before ts-ignore because formatting may affect where
         // the errors are that need to get ignored.
-        // .addPlugin(eslintFixPlugin, {})
-        // .addPlugin(tsIgnorePlugin, {})
+        .addPlugin(eslintFixPlugin, {});
+
+      if (ignore) {
+        //
         // // We need to run eslint-fix again after ts-ignore to fix up formatting.
-        // .addPlugin(eslintFixPlugin, {});
+        //
+        config.addPlugin(tsIgnorePlugin, {}).addPlugin(eslintFixPlugin, {});
       }
 
       const exitCode = await migrate({ rootDir, config, sources });
-
       process.exit(exitCode);
     },
   )

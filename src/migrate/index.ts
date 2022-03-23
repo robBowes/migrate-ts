@@ -21,36 +21,33 @@ export default async function migrate({
   sources,
 }: MigrateParams): Promise<number> {
   let exitCode = 0;
-  log.info(`TypeScript version: ${ts.version}, ts-morph version is ${tsm.version} `);
-
+  log.warn(`TypeScript version: ${ts.version}, ts-morph version is ${tsm.version} `);
   const serverInitTimer = new PerfTimer();
 
   // Normalize sources to be an array of full paths.
   if (sources !== undefined) {
     sources = Array.isArray(sources) ? sources : [sources];
     sources = sources.map((source) => path.join(rootDir, source));
-    log.info(
+    log.warn(
       `Ignoring sources from tsconfig.json, using the ones provided manually instead.`
     );
   }
 
   const tsConfigFilePath = path.join(tsConfigDir, "tsconfig.json");
-  console.log({ tsConfigFilePath });
   const project = await createProject({
     tsConfigFilePath,
     skipAddingFilesFromTsConfig: sources !== undefined,
     skipFileDependencyResolution: true,
   });
-
   // If we passed in our own sources, let's add them to the project.
   // If not, let's just get all the sources in the project.
   if (sources) {
     await project.addSourceFilesByPaths(sources);
   }
 
-  log.info(`Initialized tsserver project in ${serverInitTimer.elapsedStr()}.`);
+  log.warn(`Initialized tsserver project in ${serverInitTimer.elapsedStr()}.`);
 
-  log.info("Start...");
+  log.warn("Start...");
   const pluginsTimer = new PerfTimer();
   const updatedSourceFiles = new Set<string>();
   const originalSourceFilesToMigrate = new Set<string>(
@@ -62,7 +59,7 @@ export default async function migrate({
 
     const pluginLogPrefix = `[${plugin.name}]`;
     const pluginTimer = new PerfTimer();
-    log.info(
+    log.warn(
       `${pluginLogPrefix} Plugin ${i + 1} of ${config.plugins.length}. Start...`
     );
 
@@ -73,7 +70,7 @@ export default async function migrate({
 
     for (const sourceFile of sourceFiles) {
       const { fileName } = sourceFile;
-      // const fileTimer = new PerfTimer();
+      const fileTimer = new PerfTimer();
       const relFile = path.relative(rootDir, sourceFile.fileName);
       const fileLogPrefix = `${pluginLogPrefix}[${relFile}]`;
 
@@ -97,13 +94,13 @@ export default async function migrate({
         log.error(`${fileLogPrefix} Error:\n`, pluginErr);
         exitCode = -1;
       }
-      // log.info(`${fileLogPrefix} Finished in ${fileTimer.elapsedStr()}.`);
+      log.warn(`${fileLogPrefix} Finished in ${fileTimer.elapsedStr()}.`);
     }
 
-    log.info(`${pluginLogPrefix} Finished in ${pluginTimer.elapsedStr()}.`);
+    log.warn(`${pluginLogPrefix} Finished in ${pluginTimer.elapsedStr()}.`);
   }
 
-  log.info(
+  log.warn(
     `Finished in ${pluginsTimer.elapsedStr()}, for ${
       config.plugins.length
     } plugin(s).`
@@ -111,7 +108,7 @@ export default async function migrate({
 
   const writeTimer = new PerfTimer();
 
-  log.info(`Writing ${updatedSourceFiles.size} updated file(s)...`);
+  log.warn(`Writing ${updatedSourceFiles.size} updated file(s)...`);
   const writes = [];
   // eslint-disable-next-line no-restricted-syntax
   for (const fileName of updatedSourceFiles) {
@@ -122,7 +119,7 @@ export default async function migrate({
   }
   await Promise.all(writes);
 
-  log.info(
+  log.warn(
     `Wrote ${
       updatedSourceFiles.size
     } updated file(s) in ${writeTimer.elapsedStr()}.`
