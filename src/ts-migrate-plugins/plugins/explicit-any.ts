@@ -1,5 +1,6 @@
 import jscodeshift, { Identifier, TSTypeAnnotation } from 'jscodeshift';
 import { Collection } from 'jscodeshift/src/Collection';
+// import log from 'loglevel';
 import ts from 'typescript';
 import { Plugin } from '../../../types';
 import { isDiagnosticWithLinePosition } from '../utils/type-guards';
@@ -10,12 +11,12 @@ type Options = AnyAliasOptions;
 const explicitAnyPlugin: Plugin<Options> = {
   name: 'explicit-any',
 
-  run({ options, fileName, text, getLanguageService }) {
+  run({ options, fileName, text, getLanguageService, sourceFile }) {
     const semanticDiagnostics = getLanguageService().getSemanticDiagnostics(fileName);
     const diagnostics = semanticDiagnostics
       .filter(isDiagnosticWithLinePosition)
       .filter((d) => d.category === ts.DiagnosticCategory.Error);
-    return withExplicitAny(text, diagnostics, options.anyAlias);
+    return withExplicitAny(text, diagnostics, options.anyAlias, sourceFile);
   },
 
   validate: validateAnyAliasOptions,
@@ -28,7 +29,8 @@ const j = jscodeshift.withParser('tsx');
 function withExplicitAny(
   text: string,
   diagnostics: ts.DiagnosticWithLocation[],
-  anyAlias?: string,
+  anyAlias: string,
+  sourceFile: ts.SourceFile,
 ): string {
   const root = j(text);
 
@@ -43,6 +45,7 @@ function withExplicitAny(
     root,
     diagnostics.filter((diagnostic) => diagnostic.code === 7006 || diagnostic.code === 7008),
     typeAnnotation,
+    sourceFile,
   );
   replaceTS7019(
     root,
@@ -113,7 +116,10 @@ function replaceTS7006AndTS7008(
   root: Collection<any>,
   diagnostics: ts.DiagnosticWithLocation[],
   typeAnnotation: TSTypeAnnotation,
+  sourceFile: ts.SourceFile,
 ) {
+  const importDeclarations = sourceFile.statements.filter(ts.isImportDeclaration);
+  const printer = ts.createPrinter();
   diagnostics.forEach((diagnostic) => {
     root
       .find(
@@ -125,8 +131,72 @@ function replaceTS7006AndTS7008(
       )
       .forEach((path) => {
         let replaceArrow = false;
-
         const parentNode = path.parent.node;
+
+        const insertImport = (name: string, path: string) => {
+          if (
+            !importDeclarations.some((importDeclaration) =>
+              new RegExp(name).test(importDeclaration.moduleSpecifier.getText()),
+            )
+          ) {
+            root
+              .find(j.ImportDeclaration)
+              .at(0)
+              .insertBefore(
+                `${printer.printNode(
+                  ts.EmitHint.Unspecified,
+                  getImport(name, path),
+                  sourceFile,
+                )}\n`,
+              );
+          }
+        };
+
+        const getTypeAnnotation = (): TSTypeAnnotation => {
+          switch (path.value.name) {
+            case 'slug':
+            case 'storefrontUuid':
+            case 'venueUuid':
+            case 'venueId':
+            case 'spaceUuid':
+            case 'message':
+            case 'uuid': {
+              const type = j.tsTypeReference(j.identifier('string'));
+              const typeAnnotation = j.tsTypeAnnotation(type);
+              return typeAnnotation;
+            }
+            case 'dispatch': {
+              const type = j.tsTypeReference(j.identifier('AppDispatch'));
+              const typeAnnotation = j.tsTypeAnnotation(type);
+              insertImport('AppDispatch', '~/reducers');
+              return typeAnnotation;
+            }
+            case 'error': {
+              const type = j.tsTypeReference(j.identifier('Error'));
+              const typeAnnotation = j.tsTypeAnnotation(type);
+              return typeAnnotation;
+            }
+            case 'getState': {
+              const type = j.tsTypeReference(j.identifier('GetState'));
+              const typeAnnotation = j.tsTypeAnnotation(type);
+              insertImport('GetState', '~/reducers');
+              return typeAnnotation;
+            }
+            case 'state': {
+              const type = j.tsTypeReference(j.identifier('RootState'));
+              const typeAnnotation = j.tsTypeAnnotation(type);
+              insertImport('RootState', '~/reducers/rootState');
+              return typeAnnotation;
+            }
+            case 'index': {
+              const type = j.tsTypeReference(j.identifier('number'));
+              const typeAnnotation = j.tsTypeAnnotation(type);
+              return typeAnnotation;
+            }
+            default:
+              return typeAnnotation;
+          }
+        };
         if (j.ArrowFunctionExpression.check(parentNode)) {
           // Special casing to work around jscodeshift bugs.
           let { body, params } = parentNode;
@@ -145,7 +215,7 @@ function replaceTS7006AndTS7008(
             params = [
               j.identifier.from({
                 ...(parentNode.params[0] as Identifier),
-                typeAnnotation,
+                typeAnnotation: getTypeAnnotation(),
               }),
             ];
           }
@@ -162,7 +232,7 @@ function replaceTS7006AndTS7008(
         }
 
         if (!replaceArrow) {
-          path.get('typeAnnotation').replace(typeAnnotation);
+          path.get('typeAnnotation').replace(getTypeAnnotation());
         }
       });
   });
@@ -332,4 +402,21 @@ function replaceTS2525(
         }
       });
   });
+}
+
+// the target project might not have this as an internal dependency in project.json
+// It would have to be manually added, otherwise CI will complain about it
+function getImport(name: string, path: string) {
+  return ts.factory.createImportDeclaration(
+    undefined,
+    undefined,
+    ts.factory.createImportClause(
+      false,
+      undefined,
+      ts.factory.createNamedImports([
+        ts.factory.createImportSpecifier(false, undefined, ts.factory.createIdentifier(name)),
+      ]),
+    ),
+    ts.factory.createStringLiteral(path),
+  );
 }

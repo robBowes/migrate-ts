@@ -1,18 +1,16 @@
 {
-  "name": "ts-migrate",
+  "name": "migrate-ts",
   "version": "0.0.1",
   "repository": {
     "type": "git",
-    "url": "https://github.com/airbnb/ts-migrate.git",
-    "directory": "packages/ts-migrate-server"
+    "url": "https://github.com/robBowes/ts-migrate"
   },
   "bugs": {
-    "url": "https://github.com/airbnb/ts-migrate/issues"
+    "url": "https://github.com/robBowes/ts-migrate/issues"
   },
   "bin": {
     "ts-migrate": "build/src/cli.js"
   },
-  "private": true,
   "description": "ts-migrate monorepo",
   "scripts": {
     "bootstrap": "echo 'not implemented'",
@@ -23,7 +21,7 @@
     "postinstall": "npm run build"
   },
   "dependencies": {
-    "@ts-morph/bootstrap": "^0.9.1",
+    "@ts-morph/bootstrap": "^0.13.0",
     "json5-writer": "^0.2.0",
     "loglevel": "^1.8.0",
     "pretty-ms": "^7.0.1",

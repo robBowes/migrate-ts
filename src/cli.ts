@@ -140,7 +140,7 @@ yargs
         //
         // // We need to run eslint-fix again after ts-ignore to fix up formatting.
         //
-        config.addPlugin(tsIgnorePlugin, {}).addPlugin(eslintFixPlugin, {});
+        config.addPlugin(tsIgnorePlugin, {})
       }
 
       const exitCode = await migrate({ rootDir, config, sources });
