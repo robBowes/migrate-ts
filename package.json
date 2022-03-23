@@ -20,7 +20,9 @@
   },
   "dependencies": {
     "@ts-morph/bootstrap": "^0.13.0",
+    "jscodeshift": "^0.13.1",
     "json-schema": "^0.4.0",
+    "json5": "^2.2.1",
     "json5-writer": "^0.2.0",
     "lodash": "^4.17.21",
     "loglevel": "^1.8.0",
