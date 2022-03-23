@@ -25,6 +25,14 @@ Run the script
 npm run migrate-ts -- migrate ./ --sources "<relative filename>" [flags]
 ```
 
+## Flags
+
+`--ignore`: ignore all ts errors using ts-expect-error comments
+
+`--reignore`: remove all ts-ignore and ts-expect-error comments
+
+`--rename`: rename js and jsx files to ts/tsx
+
 # Examples:
 
 Migrate a single javascript file
