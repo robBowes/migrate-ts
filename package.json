@@ -1,6 +1,6 @@
 {
   "name": "migrate-ts",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "repository": {
     "type": "git",
     "url": "https://github.com/robBowes/ts-migrate"
@@ -15,8 +15,6 @@
   "scripts": {
     "bootstrap": "echo 'not implemented'",
     "build": "tsc -p tsconfig.json",
-    "lint": "lerna run lint",
-    "test": "lerna run test",
     "clean": "rm -rf build",
     "postinstall": "npm run build"
   },

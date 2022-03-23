@@ -1,9 +1,0 @@
-{
-  "packages": [
-    "packages/*"
-  ],
-  "version": "0.1.28",
-  "npmClient": "npm",
-  "useWorkspaces": true,
-  "stream": true
-}
