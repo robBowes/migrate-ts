@@ -1,6 +1,6 @@
 {
   "name": "migrate-ts",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "repository": {
     "type": "git",
     "url": "https://github.com/robBowes/ts-migrate"
@@ -15,8 +15,8 @@
   "scripts": {
     "bootstrap": "echo 'not implemented'",
     "build": "tsc -p tsconfig.json",
-    "clean": "rm -rf build",
-    "postinstall": "npm run build"
+    "prepublish": "npm run build",
+    "clean": "rm -rf build"
   },
   "dependencies": {
     "@ts-morph/bootstrap": "^0.13.0",
