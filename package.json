@@ -9,7 +9,7 @@
     "url": "https://github.com/robBowes/ts-migrate/issues"
   },
   "bin": {
-    "ts-migrate": "build/src/cli.js"
+    "migrate-ts": "build/src/cli.js"
   },
   "description": "ts-migrate monorepo",
   "scripts": {
