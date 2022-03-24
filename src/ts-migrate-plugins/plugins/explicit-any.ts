@@ -1,4 +1,4 @@
-import jscodeshift, { Identifier, TSTypeAnnotation } from "jscodeshift";
+import jscodeshift, { Identifier, SourceLocation, TSTypeAnnotation } from "jscodeshift";
 import { Collection } from "jscodeshift/src/Collection";
 import { forEach } from "lodash";
 // import log from 'loglevel';
@@ -147,7 +147,7 @@ function replaceTS7006AndTS7008(
     root
       .find(
         j.Identifier,
-        (node: any) =>
+        (node) =>
           node.start === diagnostic.start &&
           node.end === diagnostic.start + diagnostic.length &&
           node.typeAnnotation == null
