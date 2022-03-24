@@ -1,19 +1,22 @@
 /* eslint-disable no-use-before-define, @typescript-eslint/no-use-before-define */
-import ts from 'typescript';
-import { Plugin } from '../../../types';
-import updateSourceText, { SourceTextUpdate } from '../utils/updateSourceText';
+import ts from "typescript";
+import { Plugin } from "../../../types";
+import updateSourceText, { SourceTextUpdate } from "../utils/updateSourceText";
 import {
   findKnownImports,
   findKnownVariables,
   collectIdentifierNodes,
   KnownDefinitionMap,
-} from './utils/identifiers';
-import { AnyAliasOptions, validateAnyAliasOptions } from '../utils/validateOptions';
+} from "./utils/identifiers";
+import {
+  AnyAliasOptions,
+  validateAnyAliasOptions,
+} from "../utils/validateOptions";
 
 type Options = AnyAliasOptions;
 
 const hoistClassStaticsPlugin: Plugin<Options> = {
-  name: 'hoist-class-statics',
+  name: "hoist-class-statics",
 
   run({ sourceFile, text, options }) {
     return hoistStaticClassProperties(sourceFile, text, options);
@@ -33,22 +36,33 @@ export default hoistClassStaticsPlugin;
 function canHoistIdentifier(
   identifier: ts.Identifier,
   hoistToPos: number,
-  knownDefinitions: KnownDefinitionMap,
+  knownDefinitions: KnownDefinitionMap
 ): boolean {
-  const globalWhitelist = ['Number', 'String', 'Object', 'Date', 'window', 'global'];
+  const globalWhitelist = [
+    "Number",
+    "String",
+    "Object",
+    "Date",
+    "window",
+    "global",
+  ];
   const id = identifier.text;
-  const isDefined = knownDefinitions[id] && knownDefinitions[id].end <= hoistToPos;
+  const isDefined =
+    knownDefinitions[id] && knownDefinitions[id].end <= hoistToPos;
   const isGlobal = globalWhitelist.includes(id);
 
   return (
     isDefined ||
     isGlobal ||
     // e.g. in 'PropTypes.string.isRequired' allow the accessing identifiers 'string' and 'isRequired'
-    (ts.isPropertyAccessExpression(identifier.parent) && identifier.parent.name === identifier) ||
+    (ts.isPropertyAccessExpression(identifier.parent) &&
+      identifier.parent.name === identifier) ||
     // e.g. in { foo: 'bar' } allow the assigned identifier key 'foo'
-    (ts.isPropertyAssignment(identifier.parent) && identifier.parent.name === identifier) ||
+    (ts.isPropertyAssignment(identifier.parent) &&
+      identifier.parent.name === identifier) ||
     // e.g. in { foo() {} } allow foo
-    (ts.isMethodDeclaration(identifier.parent) && identifier.parent.name === identifier)
+    (ts.isMethodDeclaration(identifier.parent) &&
+      identifier.parent.name === identifier)
   );
 }
 
@@ -61,11 +75,11 @@ function canHoistIdentifier(
 function canHoistExpression(
   expression: ts.Expression,
   hoistToPos: number,
-  knownDefinitions: KnownDefinitionMap,
+  knownDefinitions: KnownDefinitionMap
 ): boolean {
   const allIdentifiers = collectIdentifierNodes(expression);
   return allIdentifiers.every((identifier: ts.Identifier) =>
-    canHoistIdentifier(identifier, hoistToPos, knownDefinitions),
+    canHoistIdentifier(identifier, hoistToPos, knownDefinitions)
   );
 }
 
@@ -76,7 +90,7 @@ function canHoistExpression(
  */
 function isAlreadyHoisted(
   statement: ts.ExpressionStatement,
-  classDeclaration: ts.ClassDeclaration,
+  classDeclaration: ts.ClassDeclaration
 ): boolean {
   if (
     !ts.isBinaryExpression(statement.expression) ||
@@ -87,14 +101,17 @@ function isAlreadyHoisted(
 
   const propertyToHoist = statement.expression.left.name.text;
   return classDeclaration.members.some(
-    (member) => member.name && ts.isIdentifier(member.name) && member.name.text === propertyToHoist,
+    (member) =>
+      member.name &&
+      ts.isIdentifier(member.name) &&
+      member.name.text === propertyToHoist
   );
 }
 
 function hoistStaticClassProperties(
   sourceFile: ts.SourceFile,
   sourceText: string,
-  options: Options,
+  options: Options
 ): string {
   const printer = ts.createPrinter();
   const updates: SourceTextUpdate[] = [];
@@ -124,7 +141,11 @@ function hoistStaticClassProperties(
           return;
         }
         if (
-          canHoistExpression(statement.expression.right, classDeclaration.pos, knownDefinitions)
+          canHoistExpression(
+            statement.expression.right,
+            classDeclaration.pos,
+            knownDefinitions
+          )
         ) {
           properties.push(
             ts.factory.createPropertyDeclaration(
@@ -133,11 +154,11 @@ function hoistStaticClassProperties(
               statement.expression.left.name.text,
               undefined,
               undefined,
-              statement.expression.right,
-            ),
+              statement.expression.right
+            )
           );
           updates.push({
-            kind: 'delete',
+            kind: "delete",
             index: statement.pos,
             length: statement.end - statement.pos,
           });
@@ -150,10 +171,13 @@ function hoistStaticClassProperties(
               statement.expression.left.name.text,
               undefined,
               options.anyAlias != null
-                ? ts.factory.createTypeReferenceNode(options.anyAlias, undefined)
+                ? ts.factory.createTypeReferenceNode(
+                    options.anyAlias,
+                    undefined
+                  )
                 : ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
-              undefined,
-            ),
+              undefined
+            )
           );
         }
       }
@@ -168,29 +192,36 @@ function hoistStaticClassProperties(
           classDeclaration.name,
           classDeclaration.typeParameters,
           classDeclaration.heritageClauses,
-          ts.factory.createNodeArray(properties),
+          ts.factory.createNodeArray(properties)
         );
 
         let index = classDeclaration.pos;
-        while (index < sourceText.length && /\s/.test(sourceText[index])) index += 1;
+        while (index < sourceText.length && /\s/.test(sourceText[index]))
+          index += 1;
         const length = classDeclaration.end - index;
 
         const text = printer.printNode(
           ts.EmitHint.Unspecified,
           updatedClassDeclaration,
-          sourceFile,
+          sourceFile
         );
 
-        updates.push({ kind: 'replace', index, length, text });
+        updates.push({ kind: "replace", index, length, text });
       } else {
         const text =
           ts.sys.newLine +
           properties
-            .map((property) => printer.printNode(ts.EmitHint.Unspecified, property, sourceFile))
+            .map((property) =>
+              printer.printNode(ts.EmitHint.Unspecified, property, sourceFile)
+            )
             .join(ts.sys.newLine + ts.sys.newLine) +
           ts.sys.newLine;
 
-        updates.push({ kind: 'insert', index: classDeclaration.members[0].pos, text });
+        updates.push({
+          kind: "insert",
+          index: classDeclaration.members[0].pos,
+          text,
+        });
       }
     }
   });

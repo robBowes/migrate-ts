@@ -1,7 +1,7 @@
-import ts from 'typescript';
+import ts from "typescript";
 
 export function isDiagnosticWithLinePosition(
-  diagnostic: ts.Diagnostic | ts.DiagnosticWithLocation | undefined,
+  diagnostic: ts.Diagnostic | ts.DiagnosticWithLocation | undefined
 ): diagnostic is ts.DiagnosticWithLocation {
   return (
     diagnostic != null &&
@@ -11,7 +11,7 @@ export function isDiagnosticWithLinePosition(
 }
 
 export function isDiagnostic(
-  diagnostic: ts.Diagnostic | ts.DiagnosticWithLocation | undefined,
+  diagnostic: ts.Diagnostic | ts.DiagnosticWithLocation | undefined
 ): diagnostic is ts.Diagnostic {
   return diagnostic != null && !isDiagnosticWithLinePosition(diagnostic);
 }

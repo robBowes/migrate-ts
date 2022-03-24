@@ -1,11 +1,15 @@
 /* eslint-disable no-bitwise */
-import ts from 'typescript';
-import { Plugin } from '../../../types';
-import PluginOptionsError from '../../utils/PluginOptionsError';
+import ts from "typescript";
+import { Plugin } from "../../../types";
+import PluginOptionsError from "../../utils/PluginOptionsError";
 
-import { Properties, validateOptions } from '../utils/validateOptions';
+import { Properties, validateOptions } from "../utils/validateOptions";
 
-const accessibility = ['private' as const, 'protected' as const, 'public' as const];
+const accessibility = [
+  "private" as const,
+  "protected" as const,
+  "public" as const,
+];
 
 type Options = {
   defaultAccessibility?: typeof accessibility[number];
@@ -16,16 +20,18 @@ type Options = {
 
 const optionProperties: Properties = {
   defaultAccessibility: { enum: accessibility },
-  privateRegex: { type: 'string' },
-  protectedRegex: { type: 'string' },
-  publicRegex: { type: 'string' },
+  privateRegex: { type: "string" },
+  protectedRegex: { type: "string" },
+  publicRegex: { type: "string" },
 };
 
 const memberAccessibilityPlugin: Plugin<Options> = {
-  name: 'member-accessibility',
+  name: "member-accessibility",
 
   run({ sourceFile, text, options }) {
-    const result = ts.transform(sourceFile, [memberAccessibilityTransformerFactory(options)]);
+    const result = ts.transform(sourceFile, [
+      memberAccessibilityTransformerFactory(options),
+    ]);
     const newSourceFile = result.transformed[0];
     if (newSourceFile === sourceFile) {
       return text;
@@ -61,31 +67,44 @@ const memberAccessibilityPlugin: Plugin<Options> = {
 export default memberAccessibilityPlugin;
 
 const accessibilityMask =
-  ts.ModifierFlags.Private | ts.ModifierFlags.Protected | ts.ModifierFlags.Public;
+  ts.ModifierFlags.Private |
+  ts.ModifierFlags.Protected |
+  ts.ModifierFlags.Public;
 
 const memberAccessibilityTransformerFactory =
   (options: Options) => (context: ts.TransformationContext) => {
     const { factory } = context;
     let defaultAccessibility: ts.ModifierFlags;
     switch (options.defaultAccessibility) {
-      case 'private':
+      case "private":
         defaultAccessibility = ts.ModifierFlags.Private;
         break;
-      case 'protected':
+      case "protected":
         defaultAccessibility = ts.ModifierFlags.Protected;
         break;
-      case 'public':
+      case "public":
         defaultAccessibility = ts.ModifierFlags.Public;
         break;
       default:
         defaultAccessibility = 0;
         break;
     }
-    const privateRegex = options.privateRegex ? new RegExp(options.privateRegex) : null;
-    const protectedRegex = options.protectedRegex ? new RegExp(options.protectedRegex) : null;
-    const publicRegex = options.publicRegex ? new RegExp(options.publicRegex) : null;
+    const privateRegex = options.privateRegex
+      ? new RegExp(options.privateRegex)
+      : null;
+    const protectedRegex = options.protectedRegex
+      ? new RegExp(options.protectedRegex)
+      : null;
+    const publicRegex = options.publicRegex
+      ? new RegExp(options.publicRegex)
+      : null;
 
-    if (defaultAccessibility === 0 && !privateRegex && !protectedRegex && !publicRegex) {
+    if (
+      defaultAccessibility === 0 &&
+      !privateRegex &&
+      !protectedRegex &&
+      !publicRegex
+    ) {
       // Nothing to do. Don't bother traversing the AST.
       return (file: ts.SourceFile) => file;
     }
@@ -116,7 +135,9 @@ const memberAccessibilityTransformerFactory =
         }
 
         const modifiers = factory.createNodeArray(
-          factory.createModifiersFromModifierFlags(modifierFlags | accessibilityFlag),
+          factory.createModifiersFromModifierFlags(
+            modifierFlags | accessibilityFlag
+          )
         );
         switch (node.kind) {
           case ts.SyntaxKind.PropertyDeclaration: {
@@ -128,7 +149,7 @@ const memberAccessibilityTransformerFactory =
               propertyNode.name,
               propertyNode.questionToken,
               propertyNode.type,
-              propertyNode.initializer,
+              propertyNode.initializer
             );
           }
           case ts.SyntaxKind.MethodDeclaration: {
@@ -143,7 +164,7 @@ const memberAccessibilityTransformerFactory =
               methodNode.typeParameters,
               methodNode.parameters,
               methodNode.type,
-              methodNode.body,
+              methodNode.body
             );
           }
           case ts.SyntaxKind.GetAccessor: {
@@ -155,7 +176,7 @@ const memberAccessibilityTransformerFactory =
               accessorNode.name,
               accessorNode.parameters,
               accessorNode.type,
-              accessorNode.body,
+              accessorNode.body
             );
           }
           case ts.SyntaxKind.SetAccessor: {
@@ -166,7 +187,7 @@ const memberAccessibilityTransformerFactory =
               modifiers,
               accessorNode.name,
               accessorNode.parameters,
-              accessorNode.body,
+              accessorNode.body
             );
           }
           default:

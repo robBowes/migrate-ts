@@ -1,9 +1,9 @@
 /* eslint-disable no-use-before-define, @typescript-eslint/no-use-before-define */
-import ts from 'typescript';
-import { Plugin } from '../../../types';
-import { isDiagnosticWithLinePosition } from '../utils/type-guards';
-import updateSourceText, { SourceTextUpdate } from '../utils/updateSourceText';
-import { createValidate, Properties } from '../utils/validateOptions';
+import ts from "typescript";
+import { Plugin } from "../../../types";
+import { isDiagnosticWithLinePosition } from "../utils/type-guards";
+import updateSourceText, { SourceTextUpdate } from "../utils/updateSourceText";
+import { createValidate, Properties } from "../utils/validateOptions";
 
 type Options = {
   useTsIgnore?: boolean;
@@ -11,12 +11,12 @@ type Options = {
 };
 
 const optionProperties: Properties = {
-  useTsIgnore: { type: 'boolean' },
-  messageLimit: { type: 'number' },
+  useTsIgnore: { type: "boolean" },
+  messageLimit: { type: "number" },
 };
 
 const tsIgnorePlugin: Plugin<Options> = {
-  name: 'ts-ignore',
+  name: "ts-ignore",
 
   run({ getLanguageService, fileName, sourceFile, options }) {
     const languageService: ts.LanguageService = getLanguageService();
@@ -36,29 +36,37 @@ const TS_IGNORE_MESSAGE_LIMIT = 50;
 function getTextWithIgnores(
   sourceFile: ts.SourceFile,
   diagnostics: ts.DiagnosticWithLocation[],
-  options: Options,
+  options: Options
 ): string {
   const { text } = sourceFile;
   const updates: SourceTextUpdate[] = [];
   const isIgnored: { [line: number]: boolean } = {};
 
   diagnostics.forEach((diagnostic) => {
-    const { line: diagnosticLine } = ts.getLineAndCharacterOfPosition(sourceFile, diagnostic.start);
+    const { line: diagnosticLine } = ts.getLineAndCharacterOfPosition(
+      sourceFile,
+      diagnostic.start
+    );
     const { code } = diagnostic;
     const messageText =
-      typeof diagnostic.messageText === 'string'
+      typeof diagnostic.messageText === "string"
         ? diagnostic.messageText
         : diagnostic.messageText.messageText;
     const messageLines = messageText
-      .split('\n')
+      .split("\n")
       .map((l) => l.trim())
       .filter(Boolean);
     const message = messageLines[messageLines.length - 1];
-    const errorExpression = options.useTsIgnore ? 'ts-ignore' : `ts-expect-error`;
+    const errorExpression = options.useTsIgnore
+      ? "ts-ignore"
+      : `ts-expect-error`;
     const messageLimit = options.messageLimit ?? TS_IGNORE_MESSAGE_LIMIT;
     const tsIgnoreCommentText = `@${errorExpression} ts-migrate(${code}) FIXME: ${
       message.length > messageLimit
-        ? `${message.slice(0, messageLimit)}... Remove this comment to see the full error message`
+        ? `${message.slice(
+            0,
+            messageLimit
+          )}... Remove this comment to see the full error message`
         : message
     }`;
     if (!isIgnored[diagnosticLine]) {
@@ -68,7 +76,9 @@ function getTextWithIgnores(
         const prevLine = commentLine - 1;
         const prevLinePos = getStartOfLinePos(prevLine, sourceFile);
         const prevLineText = text.slice(prevLinePos, pos - 1);
-        const prevLineStartsWithEslintComment = /^ *\/\/ *eslint/.test(prevLineText);
+        const prevLineStartsWithEslintComment = /^ *\/\/ *eslint/.test(
+          prevLineText
+        );
 
         if (!prevLineStartsWithEslintComment) break;
 
@@ -77,35 +87,39 @@ function getTextWithIgnores(
       }
 
       // Include leading whitespace
-      let ws = '';
+      let ws = "";
       let i = pos;
-      while (sourceFile.text[i] === ' ') {
+      while (sourceFile.text[i] === " ") {
         i += 1;
-        ws += ' ';
+        ws += " ";
       }
 
       if (inTemplateExpressionText(sourceFile, pos)) {
         const node = findDiagnosticNode(diagnostic, sourceFile);
         if (node) {
           updates.push({
-            kind: 'insert',
+            kind: "insert",
             index: node.pos,
             text: `${ws}${ts.sys.newLine}// ${tsIgnoreCommentText}${
-              text[node.pos] !== ts.sys.newLine ? ts.sys.newLine : ''
+              text[node.pos] !== ts.sys.newLine ? ts.sys.newLine : ""
             }`,
           });
         } else {
-          throw new Error(`Failed to add @${errorExpression} within template expression.`);
+          throw new Error(
+            `Failed to add @${errorExpression} within template expression.`
+          );
         }
       } else if (inJsxText(sourceFile, pos)) {
         updates.push({
-          kind: 'insert',
+          kind: "insert",
           index: pos,
           text: `${ws}{/* ${tsIgnoreCommentText} */}${ts.sys.newLine}`,
         });
-      } else if (onMultilineConditionalTokenLine(sourceFile, diagnostic.start)) {
+      } else if (
+        onMultilineConditionalTokenLine(sourceFile, diagnostic.start)
+      ) {
         updates.push({
-          kind: 'insert',
+          kind: "insert",
           index: getConditionalCommentPos(sourceFile, diagnostic.start),
           text: ` // ${tsIgnoreCommentText}${ts.sys.newLine}${ws} `,
         });
@@ -114,7 +128,7 @@ function getTextWithIgnores(
         if (commentLine > 1) {
           const prevLineText = text.slice(
             getStartOfLinePos(commentLine - 1, sourceFile),
-            getStartOfLinePos(commentLine, sourceFile),
+            getStartOfLinePos(commentLine, sourceFile)
           );
           if (/\bwebpackChunkName\b/.test(prevLineText)) {
             skip = true;
@@ -123,7 +137,7 @@ function getTextWithIgnores(
 
         if (!skip) {
           updates.push({
-            kind: 'insert',
+            kind: "insert",
             index: pos,
             text: `${ws}// ${tsIgnoreCommentText}${ts.sys.newLine}`,
           });
@@ -139,10 +153,12 @@ function getTextWithIgnores(
 
 function findDiagnosticNode(
   diagnostic: ts.DiagnosticWithLocation,
-  sourceFile: ts.SourceFile,
+  sourceFile: ts.SourceFile
 ): ts.Node | undefined {
   const visitor = (node: ts.Node): ts.Node | undefined =>
-    isDiagnosticNode(node, diagnostic, sourceFile) ? node : ts.forEachChild(node, visitor);
+    isDiagnosticNode(node, diagnostic, sourceFile)
+      ? node
+      : ts.forEachChild(node, visitor);
 
   return visitor(sourceFile);
 }
@@ -150,7 +166,7 @@ function findDiagnosticNode(
 function isDiagnosticNode(
   node: ts.Node,
   diagnostic: ts.DiagnosticWithLocation,
-  sourceFile: ts.SourceFile,
+  sourceFile: ts.SourceFile
 ): boolean {
   return (
     node.getStart(sourceFile) === diagnostic.start &&
@@ -160,9 +176,13 @@ function isDiagnosticNode(
 
 function inJsxText(sourceFile: ts.SourceFile, pos: number) {
   const visitor = (node: ts.Node): boolean | undefined => {
-    if (node.pos <= pos && pos < node.end && (ts.isJsxElement(node) || ts.isJsxFragment(node))) {
+    if (
+      node.pos <= pos &&
+      pos < node.end &&
+      (ts.isJsxElement(node) || ts.isJsxFragment(node))
+    ) {
       const isJsxTextChild = node.children.some(
-        (child) => ts.isJsxText(child) && child.pos <= pos && pos < child.end,
+        (child) => ts.isJsxText(child) && child.pos <= pos && pos < child.end
       );
       if (isJsxTextChild) {
         return true;
@@ -180,7 +200,7 @@ function inTemplateExpressionText(sourceFile: ts.SourceFile, pos: number) {
     if (node.pos <= pos && pos < node.end && ts.isTemplateExpression(node)) {
       const inHead = node.head.pos <= pos && pos < node.head.end;
       const inMiddleOrTail = node.templateSpans.some(
-        (span) => span.literal.pos <= pos && pos < span.literal.end,
+        (span) => span.literal.pos <= pos && pos < span.literal.end
       );
       if (inHead || inMiddleOrTail) {
         return true;
@@ -210,7 +230,7 @@ function visitConditionalExpressionWhen<T>(
     whenTrue(node: ts.ConditionalExpression): T;
     whenFalse(node: ts.ConditionalExpression): T;
     otherwise(): T;
-  },
+  }
 ): T {
   if (!node) return visitor.otherwise();
 
@@ -223,18 +243,21 @@ function visitConditionalExpressionWhen<T>(
   return visitor.otherwise();
 }
 
-function onMultilineConditionalTokenLine(sourceFile: ts.SourceFile, pos: number): boolean {
+function onMultilineConditionalTokenLine(
+  sourceFile: ts.SourceFile,
+  pos: number
+): boolean {
   const conditionalExpression = getConditionalExpressionAtPos(sourceFile, pos);
   // Not in a conditional expression.
   if (!conditionalExpression) return false;
 
   const { line: questionTokenLine } = ts.getLineAndCharacterOfPosition(
     sourceFile,
-    conditionalExpression.questionToken.end,
+    conditionalExpression.questionToken.end
   );
   const { line: colonTokenLine } = ts.getLineAndCharacterOfPosition(
     sourceFile,
-    conditionalExpression.colonToken.end,
+    conditionalExpression.colonToken.end
   );
   // Single line conditional expression.
   if (questionTokenLine === colonTokenLine) return false;
@@ -249,12 +272,19 @@ function onMultilineConditionalTokenLine(sourceFile: ts.SourceFile, pos: number)
   });
 }
 
-function getConditionalCommentPos(sourceFile: ts.SourceFile, pos: number): number {
-  return visitConditionalExpressionWhen(getConditionalExpressionAtPos(sourceFile, pos), pos, {
-    whenTrue: (node) => node.questionToken.end,
-    whenFalse: (node) => node.colonToken.end,
-    otherwise: () => pos,
-  });
+function getConditionalCommentPos(
+  sourceFile: ts.SourceFile,
+  pos: number
+): number {
+  return visitConditionalExpressionWhen(
+    getConditionalExpressionAtPos(sourceFile, pos),
+    pos,
+    {
+      whenTrue: (node) => node.questionToken.end,
+      whenFalse: (node) => node.colonToken.end,
+      otherwise: () => pos,
+    }
+  );
 }
 
 /** Get position at start of zero-indexed line number in the given source file. */

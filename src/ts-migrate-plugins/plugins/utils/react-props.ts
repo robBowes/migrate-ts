@@ -1,8 +1,8 @@
 /* eslint-disable no-use-before-define, @typescript-eslint/no-use-before-define, no-restricted-syntax */
-import ts from 'typescript';
+import ts from "typescript";
 // import { getNumComponentsInSourceFile } from './react';
-import { collectIdentifiers } from './identifiers';
-import { PropTypesIdentifierMap } from '../react-props';
+import { collectIdentifiers } from "./identifiers";
+import { PropTypesIdentifierMap } from "../react-props";
 
 export type PropsTypeNode = ts.TypeLiteralNode | ts.IntersectionTypeNode;
 
@@ -17,7 +17,7 @@ type Params = {
 export default function getTypeFromPropTypesObjectLiteral(
   objectLiteral: ts.ObjectLiteralExpression,
   sourceFile: ts.SourceFile,
-  params: Params,
+  params: Params
 ) {
   const members: ts.PropertySignature[] = [];
   const intersectionTypes: ts.TypeReferenceNode[] = [];
@@ -27,7 +27,10 @@ export default function getTypeFromPropTypesObjectLiteral(
   for (const property of objectLiteral.properties) {
     let handled = false;
     if (ts.isPropertyAssignment(property)) {
-      if (params.implicitChildren && property.name.getText(sourceFile) === 'children') {
+      if (
+        params.implicitChildren &&
+        property.name.getText(sourceFile) === "children"
+      ) {
         handled = true;
       } else {
         const prop = convertPropertyAssignment(property, sourceFile, params);
@@ -36,9 +39,14 @@ export default function getTypeFromPropTypesObjectLiteral(
           handled = true;
         }
       }
-    } else if (ts.isSpreadAssignment(property) && ts.isIdentifier(property.expression)) {
+    } else if (
+      ts.isSpreadAssignment(property) &&
+      ts.isIdentifier(property.expression)
+    ) {
       const spreadId = property.expression.text;
-      const replacement = params.spreadReplacements.find((cur) => cur.spreadId === spreadId);
+      const replacement = params.spreadReplacements.find(
+        (cur) => cur.spreadId === spreadId
+      );
       if (replacement) {
         intersectionTypes.push(replacement.typeRef);
         handled = true;
@@ -62,9 +70,9 @@ export default function getTypeFromPropTypesObjectLiteral(
       ts.SyntaxKind.MultiLineCommentTrivia,
       `
 (ts-migrate) TODO: Migrate the remaining prop types
-${comments.join('\n')}
+${comments.join("\n")}
 `,
-      true,
+      true
     );
   }
 
@@ -74,7 +82,7 @@ ${comments.join('\n')}
 function convertPropertyAssignment(
   propertyAssignment: ts.PropertyAssignment,
   sourceFile: ts.SourceFile,
-  params: Params,
+  params: Params
 ) {
   const name = propertyAssignment.name.getText(sourceFile);
   const { initializer } = propertyAssignment;
@@ -92,13 +100,19 @@ function convertPropertyAssignment(
     isRequired = false;
   }
 
-  const typeNode = getTypeFromPropTypeExpression(typeExpression, sourceFile, params);
+  const typeNode = getTypeFromPropTypeExpression(
+    typeExpression,
+    sourceFile,
+    params
+  );
 
   let propertySignature = ts.factory.createPropertySignature(
     undefined,
     name,
-    isRequired ? undefined : ts.factory.createToken(ts.SyntaxKind.QuestionToken),
-    typeNode,
+    isRequired
+      ? undefined
+      : ts.factory.createToken(ts.SyntaxKind.QuestionToken),
+    typeNode
   );
   propertySignature = ts.moveSyntheticComments(propertySignature, typeNode);
   return propertySignature;
@@ -107,13 +121,15 @@ function convertPropertyAssignment(
 function getTypeFromPropTypeExpression(
   node: ts.Expression,
   sourceFile: ts.SourceFile,
-  params: Params,
+  params: Params
 ): ts.TypeNode {
   const { anyAlias, anyFunctionAlias } = params;
 
-  let text = node.getText(sourceFile).replace(/React\.PropTypes\./, '');
+  let text = node.getText(sourceFile).replace(/React\.PropTypes\./, "");
   const isDestructuredProptypeImport =
-    params.propTypeIdentifiers && ts.isIdentifier(node) && params.propTypeIdentifiers[text];
+    params.propTypeIdentifiers &&
+    ts.isIdentifier(node) &&
+    params.propTypeIdentifiers[text];
 
   let result = null;
   if (ts.isPropertyAccessExpression(node) || isDestructuredProptypeImport) {
@@ -143,11 +159,11 @@ function getTypeFromPropTypeExpression(
     } else if (/array/.test(text)) {
       if (anyAlias) {
         result = ts.factory.createArrayTypeNode(
-          ts.factory.createTypeReferenceNode(anyAlias, undefined),
+          ts.factory.createTypeReferenceNode(anyAlias, undefined)
         );
       } else {
         result = ts.factory.createArrayTypeNode(
-          ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
+          ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)
         );
       }
     } else if (/bool/.test(text)) {
@@ -161,12 +177,18 @@ function getTypeFromPropTypeExpression(
         result = ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword);
       }
     } else if (/node/.test(text)) {
-      result = ts.factory.createTypeReferenceNode('React.ReactNode', undefined);
+      result = ts.factory.createTypeReferenceNode("React.ReactNode", undefined);
     } else if (/element/.test(text)) {
-      result = ts.factory.createTypeReferenceNode('React.ReactElement', undefined);
+      result = ts.factory.createTypeReferenceNode(
+        "React.ReactElement",
+        undefined
+      );
     } else if (/func/.test(text)) {
       if (anyFunctionAlias) {
-        result = ts.factory.createTypeReferenceNode(anyFunctionAlias, undefined);
+        result = ts.factory.createTypeReferenceNode(
+          anyFunctionAlias,
+          undefined
+        );
       } else if (anyAlias) {
         result = ts.factory.createFunctionTypeNode(
           undefined,
@@ -175,15 +197,15 @@ function getTypeFromPropTypeExpression(
               undefined,
               undefined,
               ts.factory.createToken(ts.SyntaxKind.DotDotDotToken),
-              'args',
+              "args",
               undefined,
               ts.factory.createArrayTypeNode(
-                ts.factory.createTypeReferenceNode(anyAlias, undefined),
+                ts.factory.createTypeReferenceNode(anyAlias, undefined)
               ),
-              undefined,
+              undefined
             ),
           ],
-          ts.factory.createTypeReferenceNode(anyAlias, undefined),
+          ts.factory.createTypeReferenceNode(anyAlias, undefined)
         );
       } else {
         result = ts.factory.createFunctionTypeNode(
@@ -193,15 +215,15 @@ function getTypeFromPropTypeExpression(
               undefined,
               undefined,
               ts.factory.createToken(ts.SyntaxKind.DotDotDotToken),
-              'args',
+              "args",
               undefined,
               ts.factory.createArrayTypeNode(
-                ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
+                ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)
               ),
-              undefined,
+              undefined
             ),
           ],
-          ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
+          ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)
         );
       }
     }
@@ -218,11 +240,17 @@ function getTypeFromPropTypeExpression(
     if (/oneOf$/.test(expressionText)) {
       const argument = node.arguments[0];
       if (ts.isArrayLiteralExpression(argument)) {
-        if (argument.elements.every((elm) => ts.isStringLiteral(elm) || ts.isNumericLiteral(elm))) {
+        if (
+          argument.elements.every(
+            (elm) => ts.isStringLiteral(elm) || ts.isNumericLiteral(elm)
+          )
+        ) {
           result = ts.factory.createUnionTypeNode(
-            (argument.elements as ts.NodeArray<ts.StringLiteral | ts.NumericLiteral>).map((elm) =>
-              ts.factory.createLiteralTypeNode(elm),
-            ),
+            (
+              argument.elements as ts.NodeArray<
+                ts.StringLiteral | ts.NumericLiteral
+              >
+            ).map((elm) => ts.factory.createLiteralTypeNode(elm))
           );
         }
       }
@@ -232,10 +260,14 @@ function getTypeFromPropTypeExpression(
         const children: ts.Node[] = [];
         result = ts.factory.createUnionTypeNode(
           argument.elements.map((elm) => {
-            const child = getTypeFromPropTypeExpression(elm, sourceFile, params);
+            const child = getTypeFromPropTypeExpression(
+              elm,
+              sourceFile,
+              params
+            );
             children.push(child);
             return child;
-          }),
+          })
         );
         for (const child of children) {
           result = ts.moveSyntheticComments(result, child);
@@ -244,14 +276,22 @@ function getTypeFromPropTypeExpression(
     } else if (/arrayOf$/.test(expressionText)) {
       const argument = node.arguments[0];
       if (argument) {
-        const child = getTypeFromPropTypeExpression(argument, sourceFile, params);
+        const child = getTypeFromPropTypeExpression(
+          argument,
+          sourceFile,
+          params
+        );
         result = ts.factory.createArrayTypeNode(child);
         result = ts.moveSyntheticComments(result, child);
       }
     } else if (/objectOf$/.test(expressionText)) {
       const argument = node.arguments[0];
       if (argument) {
-        const child = getTypeFromPropTypeExpression(argument, sourceFile, params);
+        const child = getTypeFromPropTypeExpression(
+          argument,
+          sourceFile,
+          params
+        );
         result = ts.factory.createTypeLiteralNode([
           ts.factory.createIndexSignature(
             undefined,
@@ -261,12 +301,12 @@ function getTypeFromPropTypeExpression(
                 undefined,
                 undefined,
                 undefined,
-                'key',
+                "key",
                 undefined,
-                ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+                ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)
               ),
             ],
-            child,
+            child
           ),
         ]);
         result = ts.moveSyntheticComments(result, child);
@@ -277,10 +317,10 @@ function getTypeFromPropTypeExpression(
         return getTypeFromPropTypesObjectLiteral(argument, sourceFile, params);
       }
     }
-  } else if (ts.isIdentifier(node) && node.text === 'textlike') {
+  } else if (ts.isIdentifier(node) && node.text === "textlike") {
     result = ts.factory.createUnionTypeNode([
       ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
-      ts.factory.createTypeReferenceNode('React.ReactNode', undefined),
+      ts.factory.createTypeReferenceNode("React.ReactNode", undefined),
     ]);
   } else if (ts.isIdentifier(node)) {
     result = ts.factory.createTypeReferenceNode(node.text, undefined);
@@ -302,10 +342,10 @@ function getTypeFromPropTypeExpression(
       result,
       ts.SyntaxKind.SingleLineCommentTrivia,
       ` TODO: ${text
-        .split('\n')
+        .split("\n")
         .map((line) => line.trim())
-        .join(' ')}`,
-      true,
+        .join(" ")}`,
+      true
     );
   }
 
@@ -315,7 +355,7 @@ function getTypeFromPropTypeExpression(
 export function createPropsTypeNameGetter(sourceFile: ts.SourceFile) {
   const usedIdentifiers = collectIdentifiers(sourceFile);
 
-  return function getPropsTypeName (componentName: string | undefined) {
+  return function getPropsTypeName(componentName: string | undefined) {
     const name = `${componentName}Props`;
 
     if (!usedIdentifiers.has(name)) {

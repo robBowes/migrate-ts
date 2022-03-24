@@ -1,10 +1,10 @@
 /* eslint-disable no-use-before-define, @typescript-eslint/no-use-before-define */
-import fs from 'fs';
-import path from 'path';
-import log from 'loglevel';
-import ts from 'typescript';
-import json5 from 'json5';
-import json5Writer from 'json5-writer';
+import fs from "fs";
+import path from "path";
+import log from "loglevel";
+import ts from "typescript";
+import json5 from "json5";
+import json5Writer from "json5-writer";
 
 interface RenameParams {
   rootDir: string;
@@ -12,9 +12,9 @@ interface RenameParams {
 }
 
 export default function rename({ rootDir, sources }: RenameParams): number {
-  const configFile = path.resolve(rootDir, 'tsconfig.json');
+  const configFile = path.resolve(rootDir, "tsconfig.json");
   if (!fs.existsSync(configFile)) {
-    log.error('Could not find tsconfig.json at', configFile);
+    log.error("Could not find tsconfig.json at", configFile);
     return -1;
   }
 
@@ -27,24 +27,27 @@ export default function rename({ rootDir, sources }: RenameParams): number {
   }
 
   if (jsFiles.length === 0) {
-    log.warn('No JS/JSX files to rename.');
+    log.warn("No JS/JSX files to rename.");
     return 0;
   }
 
   const toRename = jsFiles
     .map((oldFile) => {
       let newFile: string | undefined;
-      if (oldFile.endsWith('.jsx')) {
-        newFile = oldFile.replace(/\.jsx$/, '.tsx');
-      } else if (oldFile.endsWith('.js') && jsFileContainsJsx(oldFile)) {
-        newFile = oldFile.replace(/\.js$/, '.tsx');
-      } else if (oldFile.endsWith('.js')) {
-        newFile = oldFile.replace(/\.js$/, '.ts');
+      if (oldFile.endsWith(".jsx")) {
+        newFile = oldFile.replace(/\.jsx$/, ".tsx");
+      } else if (oldFile.endsWith(".js") && jsFileContainsJsx(oldFile)) {
+        newFile = oldFile.replace(/\.js$/, ".tsx");
+      } else if (oldFile.endsWith(".js")) {
+        newFile = oldFile.replace(/\.js$/, ".ts");
       }
 
       return { oldFile, newFile };
     })
-    .filter((result): result is { oldFile: string; newFile: string } => !!result.newFile);
+    .filter(
+      (result): result is { oldFile: string; newFile: string } =>
+        !!result.newFile
+    );
 
   log.warn(`Renaming ${toRename.length} JS/JSX files in ${rootDir}...`);
 
@@ -54,20 +57,30 @@ export default function rename({ rootDir, sources }: RenameParams): number {
 
   updateProjectJson(rootDir);
 
-  log.warn('Done.');
+  log.warn("Done.");
   return 0;
 }
 
-function findJSFiles(rootDir: string, configFile: string, sources?: string | string[]) {
+function findJSFiles(
+  rootDir: string,
+  configFile: string,
+  sources?: string | string[]
+) {
   const configFileContents = ts.sys.readFile(configFile);
   if (configFileContents == null) {
     throw new Error(`Failed to read TypeScript config file: ${configFile}`);
   }
-  const { config, error } = ts.parseConfigFileTextToJson(configFile, configFileContents);
+  const { config, error } = ts.parseConfigFileTextToJson(
+    configFile,
+    configFileContents
+  );
   if (error) {
-    const errorMessage = ts.flattenDiagnosticMessageText(error.messageText, ts.sys.newLine);
+    const errorMessage = ts.flattenDiagnosticMessageText(
+      error.messageText,
+      ts.sys.newLine
+    );
     throw new Error(
-      `Error parsing TypeScript config file text to json: ${configFile}\n${errorMessage}`,
+      `Error parsing TypeScript config file text to json: ${configFile}\n${errorMessage}`
     );
   }
 
@@ -93,7 +106,7 @@ function findJSFiles(rootDir: string, configFile: string, sources?: string | str
       exclude: [],
     },
     ts.sys,
-    rootDir,
+    rootDir
   );
 
   if (errors.length > 0) {
@@ -103,7 +116,7 @@ function findJSFiles(rootDir: string, configFile: string, sources?: string | str
       getNewLine: () => ts.sys.newLine,
     });
     throw new Error(
-      `Errors parsing TypeScript config file content: ${configFile}\n${errorMessage}`,
+      `Errors parsing TypeScript config file content: ${configFile}\n${errorMessage}`
     );
   }
 
@@ -114,32 +127,43 @@ function findJSFiles(rootDir: string, configFile: string, sources?: string | str
  * Heuristic to determine whether a .js file contains JSX.
  */
 function jsFileContainsJsx(jsFileName: string): boolean {
-  const contents = fs.readFileSync(jsFileName, 'utf8');
-  return /(from ['"]react['"]|@jsx)/.test(contents) && /<[A-Za-z>]/.test(contents);
+  const contents = fs.readFileSync(jsFileName, "utf8");
+  return (
+    /(from ['"]react['"]|@jsx)/.test(contents) && /<[A-Za-z>]/.test(contents)
+  );
 }
 
 function updateProjectJson(rootDir: string) {
-  const projectJsonFile = path.resolve(rootDir, 'project.json');
+  const projectJsonFile = path.resolve(rootDir, "project.json");
   if (!fs.existsSync(projectJsonFile)) {
     return;
   }
 
-  const projectJsonText = fs.readFileSync(projectJsonFile, 'utf-8');
+  const projectJsonText = fs.readFileSync(projectJsonFile, "utf-8");
   const projectJson = json5.parse(projectJsonText);
 
   if (projectJson && projectJson.allowedImports) {
-    projectJson.allowedImports = projectJson.allowedImports.map((allowedImport: string) =>
-      /.jsx?$/.test(allowedImport) ? allowedImport.replace(/\.js(x?)$/, '.ts$1') : allowedImport,
+    projectJson.allowedImports = projectJson.allowedImports.map(
+      (allowedImport: string) =>
+        /.jsx?$/.test(allowedImport)
+          ? allowedImport.replace(/\.js(x?)$/, ".ts$1")
+          : allowedImport
     );
   }
 
   if (projectJson && projectJson.layout) {
     const { layout } = projectJson;
-    projectJson.layout = /.jsx?$/.test(layout) ? layout.replace(/\.js(x?)$/, '.ts$1') : layout;
+    projectJson.layout = /.jsx?$/.test(layout)
+      ? layout.replace(/\.js(x?)$/, ".ts$1")
+      : layout;
   }
 
   const writer = json5Writer.load(projectJsonText);
   writer.write(projectJson);
-  fs.writeFileSync(projectJsonFile, writer.toSource({ quote: 'double' }), 'utf-8');
+  fs.writeFileSync(
+    projectJsonFile,
+    writer.toSource({ quote: "double" }),
+    "utf-8"
+  );
   log.warn(`Updated allowedImports in ${projectJsonFile}`);
 }

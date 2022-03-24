@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { createProject, Project,ts as tsm } from "@ts-morph/bootstrap";
+import { createProject, Project, ts as tsm } from "@ts-morph/bootstrap";
 import ts from "typescript";
 import path from "path";
 import log from "loglevel";
@@ -21,7 +21,9 @@ export default async function migrate({
   sources,
 }: MigrateParams): Promise<number> {
   let exitCode = 0;
-  log.warn(`TypeScript version: ${ts.version}, ts-morph version is ${tsm.version} `);
+  log.warn(
+    `TypeScript version: ${ts.version}, ts-morph version is ${tsm.version} `
+  );
   const serverInitTimer = new PerfTimer();
 
   // Normalize sources to be an array of full paths.
@@ -66,7 +68,6 @@ export default async function migrate({
     const sourceFiles = getSourceFilesToMigrate(project).filter(
       ({ fileName }) => originalSourceFilesToMigrate.has(fileName)
     );
-
 
     for (const sourceFile of sourceFiles) {
       const { fileName } = sourceFile;

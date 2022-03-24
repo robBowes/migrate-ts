@@ -1,24 +1,32 @@
-import jscodeshift, { ASTPath, ClassBody } from 'jscodeshift';
-import { Plugin } from '../../../types';
-import { isDiagnosticWithLinePosition } from '../utils/type-guards';
-import { AnyAliasOptions, validateAnyAliasOptions } from '../utils/validateOptions';
+import jscodeshift, { ASTPath, ClassBody } from "jscodeshift";
+import { Plugin } from "../../../types";
+import { isDiagnosticWithLinePosition } from "../utils/type-guards";
+import {
+  AnyAliasOptions,
+  validateAnyAliasOptions,
+} from "../utils/validateOptions";
 
 type Options = AnyAliasOptions;
 
-const j = jscodeshift.withParser('tsx');
+const j = jscodeshift.withParser("tsx");
 
 const declareMissingClassPropertiesPlugin: Plugin<Options> = {
-  name: 'declare-missing-class-properties',
+  name: "declare-missing-class-properties",
 
   async run({ text, fileName, getLanguageService, options }) {
     const diagnostics = getLanguageService()
       .getSemanticDiagnostics(fileName)
       .filter(isDiagnosticWithLinePosition)
-      .filter((diagnostic) => diagnostic.code === 2339 || diagnostic.code === 2551);
+      .filter(
+        (diagnostic) => diagnostic.code === 2339 || diagnostic.code === 2551
+      );
 
     const root = j(text);
 
-    const toAdd: { classBody: ASTPath<ClassBody>; propertyNames: Set<string> }[] = [];
+    const toAdd: {
+      classBody: ASTPath<ClassBody>;
+      propertyNames: Set<string>;
+    }[] = [];
 
     diagnostics.forEach((diagnostic) => {
       root
@@ -27,8 +35,8 @@ const declareMissingClassPropertiesPlugin: Plugin<Options> = {
           (path) =>
             (path.node as any).start === diagnostic.start &&
             (path.node as any).end === diagnostic.start + diagnostic.length &&
-            path.parentPath.node.type === 'MemberExpression' &&
-            path.parentPath.node.object.type === 'ThisExpression',
+            path.parentPath.node.type === "MemberExpression" &&
+            path.parentPath.node.object.type === "ThisExpression"
         )
         .forEach((path) => {
           const classBody = findParentClassBody(path);
@@ -49,9 +57,9 @@ const declareMissingClassPropertiesPlugin: Plugin<Options> = {
         .filter((propertyName) => {
           const existingProperty = classBody.node.body.find(
             (n) =>
-              n.type === 'ClassProperty' &&
-              n.key.type === 'Identifier' &&
-              n.key.name === propertyName,
+              n.type === "ClassProperty" &&
+              n.key.type === "Identifier" &&
+              n.key.name === propertyName
           );
           return existingProperty == null;
         })
@@ -60,7 +68,7 @@ const declareMissingClassPropertiesPlugin: Plugin<Options> = {
       let index = -1;
       for (let i = 0; i < classBody.node.body.length; i += 1) {
         const node = classBody.node.body[i];
-        if (node.type === 'ClassProperty' && node.static) {
+        if (node.type === "ClassProperty" && node.static) {
           index = i;
         }
       }
@@ -75,10 +83,10 @@ const declareMissingClassPropertiesPlugin: Plugin<Options> = {
             j.tsTypeAnnotation(
               options.anyAlias == null
                 ? j.tsAnyKeyword()
-                : j.tsTypeReference(j.identifier(options.anyAlias)),
-            ),
-          ),
-        ),
+                : j.tsTypeReference(j.identifier(options.anyAlias))
+            )
+          )
+        )
       );
     });
 
@@ -92,8 +100,8 @@ export default declareMissingClassPropertiesPlugin;
 
 function findParentClassBody(path: ASTPath): ASTPath<ClassBody> | undefined {
   let cur: ASTPath = path;
-  while (cur.node.type !== 'Program') {
-    if (cur.node.type === 'ClassBody') {
+  while (cur.node.type !== "Program") {
+    if (cur.node.type === "ClassBody") {
       return cur as ASTPath<ClassBody>;
     }
 

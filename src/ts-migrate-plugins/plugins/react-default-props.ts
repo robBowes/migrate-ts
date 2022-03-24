@@ -1,14 +1,14 @@
-import ts from 'typescript';
-import { Plugin } from '../../../types';
-import updateSourceText, { SourceTextUpdate } from '../utils/updateSourceText';
-import { createValidate, Properties } from '../utils/validateOptions';
+import ts from "typescript";
+import { Plugin } from "../../../types";
+import updateSourceText, { SourceTextUpdate } from "../utils/updateSourceText";
+import { createValidate, Properties } from "../utils/validateOptions";
 
 type Options = {
   useDefaultPropsHelper?: boolean;
 };
 
 const optionProperties: Properties = {
-  useDefaultPropsHelper: { type: 'boolean' },
+  useDefaultPropsHelper: { type: "boolean" },
 };
 
 /**
@@ -20,20 +20,28 @@ const optionProperties: Properties = {
 const WITH_DEFAULT_PROPS_HELPER = `WithDefaultProps`;
 
 const reactDefaultPropsPlugin: Plugin<Options> = {
-  name: 'react-default-props',
+  name: "react-default-props",
 
   run({ sourceFile, text, options }) {
-    const importDeclarations = sourceFile.statements.filter(ts.isImportDeclaration);
-    const expressionStatements = sourceFile.statements.filter(ts.isExpressionStatement);
-    const classDeclarations = sourceFile.statements.filter(ts.isClassDeclaration);
-    const interfaceDeclarations = sourceFile.statements.filter(ts.isInterfaceDeclaration);
+    const importDeclarations = sourceFile.statements.filter(
+      ts.isImportDeclaration
+    );
+    const expressionStatements = sourceFile.statements.filter(
+      ts.isExpressionStatement
+    );
+    const classDeclarations = sourceFile.statements.filter(
+      ts.isClassDeclaration
+    );
+    const interfaceDeclarations = sourceFile.statements.filter(
+      ts.isInterfaceDeclaration
+    );
 
     // sfcs default props assignments
     const sfcsDefaultPropsAssignments = expressionStatements.filter(
       (expressionStatement) =>
         ts.isBinaryExpression(expressionStatement.expression) &&
         ts.isPropertyAccessExpression(expressionStatement.expression.left) &&
-        expressionStatement.expression.left.name.getText() === 'defaultProps',
+        expressionStatement.expression.left.name.getText() === "defaultProps"
     );
 
     // class default props assigments
@@ -41,35 +49,47 @@ const reactDefaultPropsPlugin: Plugin<Options> = {
       (classDeclaration) =>
         classDeclaration.members
           .filter(ts.isPropertyDeclaration)
-          .filter((declaration) => declaration.name.getText() === 'defaultProps').length > 0,
+          .filter(
+            (declaration) => declaration.name.getText() === "defaultProps"
+          ).length > 0
     );
 
-    if (sfcsDefaultPropsAssignments.length === 0 && classDefaultPropsAssignment.length === 0) {
+    if (
+      sfcsDefaultPropsAssignments.length === 0 &&
+      classDefaultPropsAssignment.length === 0
+    ) {
       return undefined;
     }
 
-    const functionDeclarations = sourceFile.statements.filter(ts.isFunctionDeclaration);
-    const variableStatements = sourceFile.statements.filter(ts.isVariableStatement);
+    const functionDeclarations = sourceFile.statements.filter(
+      ts.isFunctionDeclaration
+    );
+    const variableStatements = sourceFile.statements.filter(
+      ts.isVariableStatement
+    );
     // will use Props type from here
-    const typeAliasDeclarations = sourceFile.statements.filter(ts.isTypeAliasDeclaration);
+    const typeAliasDeclarations = sourceFile.statements.filter(
+      ts.isTypeAliasDeclaration
+    );
 
     const updates: SourceTextUpdate[] = [];
     const printer = ts.createPrinter();
     const processedPropTypes = new Map<string, string>();
 
-    let shouldAddWithDefaultPropsImport = !importDeclarations.some((importDeclaration) =>
-      /WithDefaultProps/.test(importDeclaration.moduleSpecifier.getText()),
+    let shouldAddWithDefaultPropsImport = !importDeclarations.some(
+      (importDeclaration) =>
+        /WithDefaultProps/.test(importDeclaration.moduleSpecifier.getText())
     );
 
     const insertWithDefaultPropsImport = () => {
       if (shouldAddWithDefaultPropsImport) {
         updates.push({
-          kind: 'insert',
+          kind: "insert",
           index: 0,
           text: `${printer.printNode(
             ts.EmitHint.Unspecified,
             getWithDefaultPropsImport(),
-            sourceFile,
+            sourceFile
           )}\n`,
         });
         // it probably could be done in the better way :)
@@ -83,48 +103,59 @@ const reactDefaultPropsPlugin: Plugin<Options> = {
       propsTypeName: string,
       newTypeInsertPos: number,
       componentTypeReference: ts.TypeReferenceNode,
-      componentName: string,
+      componentName: string
     ) => {
       // we don't want process props types more than once
-      if (processedPropTypes.get(propsTypeName) === defaultPropsTypeName) return;
+      if (processedPropTypes.get(propsTypeName) === defaultPropsTypeName)
+        return;
 
       // prevent multiple usage of defalut props or WithDefaultProps
-      const alreadyHaveDefalutProps = ts.isIntersectionTypeNode(propsTypeAliasDeclaration.type)
+      const alreadyHaveDefalutProps = ts.isIntersectionTypeNode(
+        propsTypeAliasDeclaration.type
+      )
         ? propsTypeAliasDeclaration.type.types.some(
             (typeExp) =>
               (ts.isTypeQueryNode(typeExp) &&
                 typeExp.exprName.getText() === defaultPropsTypeName) ||
-              typeExp.getText().includes(WITH_DEFAULT_PROPS_HELPER),
+              typeExp.getText().includes(WITH_DEFAULT_PROPS_HELPER)
           )
         : ts.isTypeReferenceNode(propsTypeAliasDeclaration.type) &&
-          propsTypeAliasDeclaration.type.typeName.getText() === WITH_DEFAULT_PROPS_HELPER;
+          propsTypeAliasDeclaration.type.typeName.getText() ===
+            WITH_DEFAULT_PROPS_HELPER;
 
       if (alreadyHaveDefalutProps) return;
 
       if (options.useDefaultPropsHelper) insertWithDefaultPropsImport();
 
-      const indexOfTypeValue = ts.isIntersectionTypeNode(propsTypeAliasDeclaration.type)
-        ? propsTypeAliasDeclaration.type.types.findIndex((typeEl) => ts.isTypeLiteralNode(typeEl))
+      const indexOfTypeValue = ts.isIntersectionTypeNode(
+        propsTypeAliasDeclaration.type
+      )
+        ? propsTypeAliasDeclaration.type.types.findIndex((typeEl) =>
+            ts.isTypeLiteralNode(typeEl)
+          )
         : -1;
 
       const propTypesAreOnlyReferences =
-        ts.isIntersectionTypeNode(propsTypeAliasDeclaration.type) && indexOfTypeValue === -1;
+        ts.isIntersectionTypeNode(propsTypeAliasDeclaration.type) &&
+        indexOfTypeValue === -1;
 
-      const propsTypeValueNode = ts.isIntersectionTypeNode(propsTypeAliasDeclaration.type)
+      const propsTypeValueNode = ts.isIntersectionTypeNode(
+        propsTypeAliasDeclaration.type
+      )
         ? ts.factory.updateIntersectionTypeNode(
             propsTypeAliasDeclaration.type,
             ts.factory.createNodeArray(
               propsTypeAliasDeclaration.type.types.filter(
-                (_, k) => propTypesAreOnlyReferences || indexOfTypeValue === k,
-              ),
-            ),
+                (_, k) => propTypesAreOnlyReferences || indexOfTypeValue === k
+              )
+            )
           )
         : propsTypeAliasDeclaration.type;
 
       const doesPropsTypeHaveExport =
         propsTypeAliasDeclaration.modifiers &&
         propsTypeAliasDeclaration.modifiers.find(
-          (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
+          (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword
         );
 
       // rename type PropName -> type OwnPropName
@@ -132,37 +163,51 @@ const reactDefaultPropsPlugin: Plugin<Options> = {
       // not an ideal way to prevent a double declaration of the OwnPropname,
       // however, this should cover most of the cases
       const alreadyHaveUpdatedName =
-        interfaceDeclarations.some((node) => node.name.text.includes(updatedProptypesName)) ||
-        typeAliasDeclarations.some((node) => node.name.text.includes(updatedProptypesName));
+        interfaceDeclarations.some((node) =>
+          node.name.text.includes(updatedProptypesName)
+        ) ||
+        typeAliasDeclarations.some((node) =>
+          node.name.text.includes(updatedProptypesName)
+        );
 
       updatedProptypesName = alreadyHaveUpdatedName
         ? `Own${componentName}${propsTypeName}`
         : updatedProptypesName;
 
-      const updatedPropTypesName = doesPropsTypeHaveExport ? propsTypeName : updatedProptypesName;
+      const updatedPropTypesName = doesPropsTypeHaveExport
+        ? propsTypeName
+        : updatedProptypesName;
       const updatedPropTypeAlias = ts.factory.updateTypeAliasDeclaration(
         propsTypeAliasDeclaration,
         propsTypeAliasDeclaration.decorators,
         propsTypeAliasDeclaration.modifiers,
         ts.factory.createIdentifier(updatedPropTypesName),
         propsTypeAliasDeclaration.typeParameters,
-        propsTypeValueNode,
+        propsTypeValueNode
       );
 
       const index = propsTypeAliasDeclaration.pos;
       const length = propsTypeAliasDeclaration.end - index;
-      const text = printer.printNode(ts.EmitHint.Unspecified, updatedPropTypeAlias, sourceFile);
-      updates.push({ kind: 'replace', index, length, text: `\n\n${text}` });
+      const text = printer.printNode(
+        ts.EmitHint.Unspecified,
+        updatedPropTypeAlias,
+        sourceFile
+      );
+      updates.push({ kind: "replace", index, length, text: `\n\n${text}` });
 
       // create type Props = WithDefaultProps<OwnProps, typeof defaultProps> & types;
       const newPropsTypeValue = options.useDefaultPropsHelper
         ? ts.factory.createTypeReferenceNode(WITH_DEFAULT_PROPS_HELPER, [
             ts.factory.createTypeReferenceNode(updatedPropTypesName, undefined),
-            ts.factory.createTypeQueryNode(ts.factory.createIdentifier(defaultPropsTypeName)),
+            ts.factory.createTypeQueryNode(
+              ts.factory.createIdentifier(defaultPropsTypeName)
+            ),
           ])
         : ts.factory.createIntersectionTypeNode([
             ts.factory.createTypeReferenceNode(updatedPropTypesName, undefined),
-            ts.factory.createTypeQueryNode(ts.factory.createIdentifier(defaultPropsTypeName)),
+            ts.factory.createTypeQueryNode(
+              ts.factory.createIdentifier(defaultPropsTypeName)
+            ),
           ]);
 
       const componentPropsTypeName = doesPropsTypeHaveExport
@@ -180,35 +225,42 @@ const reactDefaultPropsPlugin: Plugin<Options> = {
               ...propsTypeAliasDeclaration.type.types.filter((el, k) =>
                 propTypesAreOnlyReferences
                   ? ts.isIntersectionTypeNode(updatedPropTypeAlias) &&
-                    !(updatedPropTypeAlias as ts.IntersectionTypeNode).types.includes(el)
-                  : indexOfTypeValue !== k,
+                    !(
+                      updatedPropTypeAlias as ts.IntersectionTypeNode
+                    ).types.includes(el)
+                  : indexOfTypeValue !== k
               ),
             ])
-          : newPropsTypeValue,
+          : newPropsTypeValue
       );
 
       updates.push({
-        kind: 'insert',
+        kind: "insert",
         index: newTypeInsertPos,
-        text: `\n\n${printer.printNode(ts.EmitHint.Unspecified, newPropsTypeAlias, sourceFile)}`,
+        text: `\n\n${printer.printNode(
+          ts.EmitHint.Unspecified,
+          newPropsTypeAlias,
+          sourceFile
+        )}`,
       });
 
       // we should rename component prop type in that case
       if (doesPropsTypeHaveExport) {
-        const updatedComponentTypeReference = ts.factory.updateTypeReferenceNode(
-          componentTypeReference,
-          ts.factory.createIdentifier(componentPropsTypeName),
-          undefined,
-        );
+        const updatedComponentTypeReference =
+          ts.factory.updateTypeReferenceNode(
+            componentTypeReference,
+            ts.factory.createIdentifier(componentPropsTypeName),
+            undefined
+          );
 
         const index = componentTypeReference.pos;
         const length = componentTypeReference.end - index;
         const text = printer.printNode(
           ts.EmitHint.Unspecified,
           updatedComponentTypeReference,
-          sourceFile,
+          sourceFile
         );
-        updates.push({ kind: 'replace', index, length, text: `${text}` });
+        updates.push({ kind: "replace", index, length, text: `${text}` });
       }
 
       processedPropTypes.set(propsTypeName, defaultPropsTypeName);
@@ -234,8 +286,11 @@ const reactDefaultPropsPlugin: Plugin<Options> = {
       const variableDeclaration = variableStatements.find(
         (variableStatement) =>
           !!variableStatement.declarationList.declarations.find(
-            (declaration) => !!(declaration.name && declaration.name.getText() === componentName),
-          ),
+            (declaration) =>
+              !!(
+                declaration.name && declaration.name.getText() === componentName
+              )
+          )
       );
 
       const variableInitializer = variableDeclaration
@@ -245,10 +300,14 @@ const reactDefaultPropsPlugin: Plugin<Options> = {
       const componentDeclaration =
         functionDeclarations.find(
           (functionDeclaration) =>
-            !!(functionDeclaration.name && functionDeclaration.name.getText() === componentName),
+            !!(
+              functionDeclaration.name &&
+              functionDeclaration.name.getText() === componentName
+            )
         ) ||
         (variableInitializer &&
-        (ts.isArrowFunction(variableInitializer) || ts.isFunctionDeclaration(variableInitializer))
+        (ts.isArrowFunction(variableInitializer) ||
+          ts.isFunctionDeclaration(variableInitializer))
           ? variableInitializer
           : undefined);
 
@@ -261,7 +320,7 @@ const reactDefaultPropsPlugin: Plugin<Options> = {
       ) {
         const propsTypeName = componentDeclaration.parameters[0].type.getText();
         const propsTypeAliasDeclarations = typeAliasDeclarations.find(
-          (typeAlias) => typeAlias.name.getText() === propsTypeName,
+          (typeAlias) => typeAlias.name.getText() === propsTypeName
         );
 
         if (propsTypeAliasDeclarations) {
@@ -276,23 +335,27 @@ const reactDefaultPropsPlugin: Plugin<Options> = {
             propsTypeName,
             newTypeInsertPos,
             componentDeclaration.parameters[0].type,
-            componentName,
+            componentName
           );
         }
       }
     });
 
     classDefaultPropsAssignment.forEach((classDeclaration) => {
-      const componentName = classDeclaration.name && classDeclaration.name.getText();
+      const componentName =
+        classDeclaration.name && classDeclaration.name.getText();
 
       const defaultPropsDeclaration = classDeclaration.members
         .filter(ts.isPropertyDeclaration)
-        .filter((declaration) => declaration.name.getText() === 'defaultProps')[0];
+        .filter(
+          (declaration) => declaration.name.getText() === "defaultProps"
+        )[0];
 
       if (!defaultPropsDeclaration) return;
 
       const isObjectIdentifier =
-        defaultPropsDeclaration.initializer && ts.isIdentifier(defaultPropsDeclaration.initializer);
+        defaultPropsDeclaration.initializer &&
+        ts.isIdentifier(defaultPropsDeclaration.initializer);
       const defaultPropsTypeName =
         isObjectIdentifier && defaultPropsDeclaration.initializer
           ? defaultPropsDeclaration.initializer.getText()
@@ -300,27 +363,32 @@ const reactDefaultPropsPlugin: Plugin<Options> = {
       const variableDeclaration = variableStatements.find(
         (variableStatement) =>
           !!variableStatement.declarationList.declarations.find(
-            (declaration) => !!(declaration.name && declaration.name.getText() === componentName),
-          ),
+            (declaration) =>
+              !!(
+                declaration.name && declaration.name.getText() === componentName
+              )
+          )
       );
       const variableInitializer = variableDeclaration
         ? variableDeclaration.declarationList.declarations[0].initializer
         : undefined;
       const heritageClause = classDeclaration.heritageClauses
-        ? classDeclaration.heritageClauses.find((heritageClause) => heritageClause.types.length > 0)
+        ? classDeclaration.heritageClauses.find(
+            (heritageClause) => heritageClause.types.length > 0
+          )
         : undefined;
       const expressionWithTypeArguments =
         heritageClause && heritageClause.types
           ? heritageClause.types.find(
               (x) =>
                 ts.isExpressionWithTypeArguments(x) &&
-                (x.typeArguments ? x.typeArguments.length > 0 : false),
+                (x.typeArguments ? x.typeArguments.length > 0 : false)
             )
           : undefined;
       const propsTypeReferenceNode =
         expressionWithTypeArguments && expressionWithTypeArguments.typeArguments
           ? (expressionWithTypeArguments.typeArguments.find((genericArgs) =>
-              ts.isTypeReferenceNode(genericArgs),
+              ts.isTypeReferenceNode(genericArgs)
             ) as ts.TypeReferenceNode | undefined)
           : undefined;
 
@@ -329,7 +397,7 @@ const reactDefaultPropsPlugin: Plugin<Options> = {
 
       const propsTypeName = propsTypeReferenceNode.getText();
       const propsTypeAliasDeclarations = typeAliasDeclarations.find(
-        (typeAlias) => typeAlias.name.getText() === propsTypeName,
+        (typeAlias) => typeAlias.name.getText() === propsTypeName
       );
 
       if (propsTypeAliasDeclarations) {
@@ -343,7 +411,7 @@ const reactDefaultPropsPlugin: Plugin<Options> = {
           propsTypeName,
           newTypeInsertPos,
           propsTypeReferenceNode,
-          componentName,
+          componentName
         );
       }
     });
@@ -367,11 +435,11 @@ function getWithDefaultPropsImport() {
         ts.factory.createImportSpecifier(
           false,
           undefined,
-          ts.factory.createIdentifier('WithDefaultProps'),
+          ts.factory.createIdentifier("WithDefaultProps")
         ),
-      ]),
+      ])
     ),
-    ts.factory.createStringLiteral(':ts-utils/types/WithDefaultProps'),
+    ts.factory.createStringLiteral(":ts-utils/types/WithDefaultProps")
   );
 }
 

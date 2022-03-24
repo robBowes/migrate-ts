@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 /* eslint-disable no-await-in-loop, no-restricted-syntax */
-import path from 'path';
+import path from "path";
 // import log from 'loglevel';
-import yargs from 'yargs';
+import yargs from "yargs";
 
 // import ts from 'typescript';
 // import { readFileSync } from 'fs';
@@ -23,9 +23,9 @@ import {
   stripTSIgnorePlugin,
   tsIgnorePlugin,
   Plugin,
-} from './ts-migrate-plugins';
-import { migrate, MigrateConfig } from './index';
-import renameFunction from './rename';
+} from "./ts-migrate-plugins";
+import { migrate, MigrateConfig } from "./index";
+import renameFunction from "./rename";
 
 // const availablePlugins = [
 //   addConversionsPlugin,
@@ -43,53 +43,63 @@ import renameFunction from './rename';
 //   stripTSIgnorePlugin,
 //   tsIgnorePlugin,
 // ];
-const renameSources = (string: string) => string.replace('.jsx', '.tsx').replace('.js', '.ts');
+const renameSources = (string: string) =>
+  string.replace(".jsx", ".tsx").replace(".js", ".ts");
 
 // eslint-disable-next-line no-unused-expressions
 yargs
   .command(
-    'rename [options] <folder>',
-    'Rename files in folder from JS/JSX to TS/TSX',
+    "rename [options] <folder>",
+    "Rename files in folder from JS/JSX to TS/TSX",
     (cmd) =>
       cmd
-        .positional('folder', { type: 'string' })
-        .string('sources')
-        .alias('sources', 's')
-        .describe('sources', 'Path to a subset of your project to rename.')
-        .example('$0 rename /frontend/foo', 'Rename all the files in /frontend/foo')
+        .positional("folder", { type: "string" })
+        .string("sources")
+        .alias("sources", "s")
+        .describe("sources", "Path to a subset of your project to rename.")
+        .example(
+          "$0 rename /frontend/foo",
+          "Rename all the files in /frontend/foo"
+        )
         .example(
           '$0 rename /frontend/foo -s "bar/**/*"',
-          'Rename all the files in /frontend/foo/bar',
+          "Rename all the files in /frontend/foo/bar"
         )
-        .require(['folder']),
+        .require(["folder"]),
     (args) => {
       const rootDir = path.resolve(process.cwd(), args.folder);
       const { sources } = args;
       const exitCode = renameFunction({ rootDir, sources });
       process.exit(exitCode);
-    },
+    }
   )
   .command(
-    'migrate [options] <folder>',
-    'Fix TypeScript errors, using codemods',
+    "migrate [options] <folder>",
+    "Fix TypeScript errors, using codemods",
     (cmd) =>
       cmd
-        .positional('folder', { type: 'string' })
+        .positional("folder", { type: "string" })
 
-        .string('sources')
-        .boolean('rename')
-        .boolean('ignore')
-        .boolean('reignore')
-        .alias('sources', 's')
-        .alias('ignore', 'i')
-        .alias('rename', 'r')
-        .describe('sources', 'Path to a subset of your project to rename (globs are ok).')
-        .example('migrate /frontend/foo', 'Migrate all the files in /frontend/foo')
+        .string("sources")
+        .boolean("rename")
+        .boolean("ignore")
+        .boolean("reignore")
+        .alias("sources", "s")
+        .alias("ignore", "i")
+        .alias("rename", "r")
+        .describe(
+          "sources",
+          "Path to a subset of your project to rename (globs are ok)."
+        )
+        .example(
+          "migrate /frontend/foo",
+          "Migrate all the files in /frontend/foo"
+        )
         .example(
           '$0 migrate /frontend/foo -s "bar/**/*" -s "node_modules/**/*.d.ts"',
-          'Migrate all the files in /frontend/foo/bar, accounting for ambient types from node_modules.',
+          "Migrate all the files in /frontend/foo/bar, accounting for ambient types from node_modules."
         )
-        .require(['folder']),
+        .require(["folder"]),
     async (args) => {
       const rootDir = path.resolve(process.cwd(), args.folder);
       const { ignore, rename, reignore } = args;
@@ -100,13 +110,13 @@ yargs
         if (renameExitCode !== 0) {
           process.exit(renameExitCode);
         }
-        if (typeof sources === 'string') {
+        if (typeof sources === "string") {
           sources = renameSources(sources);
         }
       }
 
-      const anyAlias = 'TSFixMe';
-      const anyFunctionAlias = 'TSFixMeFunction';
+      const anyAlias = "TSFixMe";
+      const anyFunctionAlias = "TSFixMeFunction";
 
       const config = new MigrateConfig();
       if (reignore) {
@@ -140,17 +150,17 @@ yargs
         //
         // // We need to run eslint-fix again after ts-ignore to fix up formatting.
         //
-        config.addPlugin(tsIgnorePlugin, {})
+        config.addPlugin(tsIgnorePlugin, {});
       }
 
       const exitCode = await migrate({ rootDir, config, sources });
       process.exit(exitCode);
-    },
+    }
   )
   .command(
-    'reignore <folder>',
-    'Remove then re-add ts-ignore comments',
-    (cmd) => cmd.positional('folder', { type: 'string' }).require(['folder']),
+    "reignore <folder>",
+    "Remove then re-add ts-ignore comments",
+    (cmd) => cmd.positional("folder", { type: "string" }).require(["folder"]),
     async (args) => {
       const rootDir = path.resolve(process.cwd(), args.folder);
 
@@ -186,25 +196,31 @@ yargs
       const exitCode = await migrate({ rootDir, config });
 
       process.exit(exitCode);
-    },
+    }
   )
-  .example('$0 --help', 'Show help')
-  .example('$0 migrate --help', 'Show help for the migrate command')
-  .example('$0 init frontend/foo', 'Create tsconfig.json file at frontend/foo/tsconfig.json')
+  .example("$0 --help", "Show help")
+  .example("$0 migrate --help", "Show help for the migrate command")
   .example(
-    '$0 init:extended frontend/foo',
-    'Create extended from the base tsconfig.json file at frontend/foo/tsconfig.json',
+    "$0 init frontend/foo",
+    "Create tsconfig.json file at frontend/foo/tsconfig.json"
   )
-  .example('$0 rename frontend/foo', 'Rename files in frontend/foo from JS/JSX to TS/TSX')
+  .example(
+    "$0 init:extended frontend/foo",
+    "Create extended from the base tsconfig.json file at frontend/foo/tsconfig.json"
+  )
+  .example(
+    "$0 rename frontend/foo",
+    "Rename files in frontend/foo from JS/JSX to TS/TSX"
+  )
   .example(
     '$0 rename frontend/foo --s "bar/baz"',
-    'Rename files in frontend/foo/bar/baz from JS/JSX to TS/TSX',
+    "Rename files in frontend/foo/bar/baz from JS/JSX to TS/TSX"
   )
-  .demandCommand(1, 'Must provide a command.')
-  .help('h')
-  .alias('h', 'help')
-  .alias('i', 'init')
-  .alias('m', 'migrate')
-  .alias('rn', 'rename')
-  .alias('ri', 'reignore')
+  .demandCommand(1, "Must provide a command.")
+  .help("h")
+  .alias("h", "help")
+  .alias("i", "init")
+  .alias("m", "migrate")
+  .alias("rn", "rename")
+  .alias("ri", "reignore")
   .wrap(Math.min(yargs.terminalWidth(), 100)).argv;

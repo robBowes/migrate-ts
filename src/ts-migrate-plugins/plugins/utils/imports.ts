@@ -1,7 +1,7 @@
 /* eslint-disable no-use-before-define, no-restricted-syntax */
-import ts from 'typescript';
-import { SourceTextUpdate } from '../../utils/updateSourceText';
-import { getTextPreservingWhitespace } from './text';
+import ts from "typescript";
+import { SourceTextUpdate } from "../../utils/updateSourceText";
+import { getTextPreservingWhitespace } from "./text";
 
 export type DefaultImport = { defaultImport: string; moduleSpecifier: string };
 export type NamedImport = { namedImport: string; moduleSpecifier: string };
@@ -14,7 +14,7 @@ type AnyImport = DefaultImport | NamedImport | ModuleImport;
 export function updateImports(
   sourceFile: ts.SourceFile,
   toAdd: AddImport[],
-  toRemove: RemoveImport[],
+  toRemove: RemoveImport[]
 ) {
   const updates: SourceTextUpdate[] = [];
   const printer = ts.createPrinter();
@@ -29,24 +29,29 @@ export function updateImports(
         !presentedImports.has(cur.defaultImport)) ||
       (isNamedImport(cur) &&
         usedIdentifiers.has(cur.namedImport) &&
-        !presentedImports.has(cur.namedImport)),
+        !presentedImports.has(cur.namedImport))
   );
   const added = new Set<AddImport>();
   const isNotAdded = (cur: AddImport) => !added.has(cur);
 
-  const importDeclarations = sourceFile.statements.filter(ts.isImportDeclaration);
+  const importDeclarations = sourceFile.statements.filter(
+    ts.isImportDeclaration
+  );
   importDeclarations.forEach((importDeclaration) => {
     if (!importDeclaration.importClause) return;
 
     const moduleSpecifierText = importDeclaration.moduleSpecifier
       .getText(sourceFile)
-      .replace(/['"]/g, '');
+      .replace(/['"]/g, "");
 
-    const isModuleSpecifier = (cur: AnyImport) => cur.moduleSpecifier === moduleSpecifierText;
+    const isModuleSpecifier = (cur: AnyImport) =>
+      cur.moduleSpecifier === moduleSpecifierText;
 
     let { importClause } = importDeclaration;
 
-    const shouldRemoveAllUnused = toRemove.filter(isModuleImport).some(isModuleSpecifier);
+    const shouldRemoveAllUnused = toRemove
+      .filter(isModuleImport)
+      .some(isModuleSpecifier);
 
     const shouldRemoveNameUnused = toRemove
       .filter(isDefaultImport)
@@ -55,7 +60,7 @@ export function updateImports(
           cur.moduleSpecifier === moduleSpecifierText &&
           importClause.name != null &&
           cur.defaultImport != null &&
-          cur.defaultImport === importClause.name.text,
+          cur.defaultImport === importClause.name.text
       );
 
     if (
@@ -67,7 +72,7 @@ export function updateImports(
         importClause,
         importClause.isTypeOnly,
         undefined,
-        importClause.namedBindings,
+        importClause.namedBindings
       );
     }
 
@@ -75,7 +80,10 @@ export function updateImports(
       .filter(isDefaultImport)
       .filter(isModuleSpecifier)
       .filter(isNotAdded)
-      .filter((cur) => importClause.name && cur.defaultImport === importClause.name.text)
+      .filter(
+        (cur) =>
+          importClause.name && cur.defaultImport === importClause.name.text
+      )
       .forEach((cur) => added.add(cur));
 
     const nameToAdd = toAddActual
@@ -87,7 +95,7 @@ export function updateImports(
         importClause,
         importClause.isTypeOnly,
         ts.factory.createIdentifier(nameToAdd[0].defaultImport),
-        importClause.namedBindings,
+        importClause.namedBindings
       );
       added.add(nameToAdd[0]);
     }
@@ -102,11 +110,14 @@ export function updateImports(
         importClause,
         importClause.isTypeOnly,
         importClause.name,
-        undefined,
+        undefined
       );
     }
 
-    if (importClause.namedBindings && ts.isNamedImports(importClause.namedBindings)) {
+    if (
+      importClause.namedBindings &&
+      ts.isNamedImports(importClause.namedBindings)
+    ) {
       const elements = importClause.namedBindings.elements.filter((el) => {
         const isUsed = usedIdentifiers.has(el.name.text);
         if (isUsed) return true;
@@ -125,7 +136,9 @@ export function updateImports(
         .filter(isNamedImport)
         .filter(isModuleSpecifier)
         .filter(isNotAdded)
-        .filter((cur) => elements.some((el) => el.name.text === cur.namedImport))
+        .filter((cur) =>
+          elements.some((el) => el.name.text === cur.namedImport)
+        )
         .forEach((cur) => added.add(cur));
 
       if (elements.length !== importClause.namedBindings.elements.length) {
@@ -134,8 +147,11 @@ export function updateImports(
           importClause.isTypeOnly,
           importClause.name,
           elements.length > 0
-            ? ts.factory.updateNamedImports(importClause.namedBindings, elements)
-            : undefined,
+            ? ts.factory.updateNamedImports(
+                importClause.namedBindings,
+                elements
+              )
+            : undefined
         );
       }
     }
@@ -150,17 +166,18 @@ export function updateImports(
         importClause.isTypeOnly,
         importClause.name,
         ts.factory.createNamedImports([
-          ...(importClause.namedBindings && ts.isNamedImports(importClause.namedBindings)
+          ...(importClause.namedBindings &&
+          ts.isNamedImports(importClause.namedBindings)
             ? importClause.namedBindings.elements
             : []),
           ...namedToAdd.map((cur) =>
             ts.factory.createImportSpecifier(
               false,
               undefined,
-              ts.factory.createIdentifier(cur.namedImport),
-            ),
+              ts.factory.createIdentifier(cur.namedImport)
+            )
           ),
-        ]),
+        ])
       );
       namedToAdd.forEach((cur) => added.add(cur));
     }
@@ -186,22 +203,31 @@ export function updateImports(
           importDeclaration.modifiers,
           importClause,
           importDeclaration.moduleSpecifier,
-          undefined,
+          undefined
         );
-        const text = getTextPreservingWhitespace(importDeclaration, upImpDec, sourceFile);
+        const text = getTextPreservingWhitespace(
+          importDeclaration,
+          upImpDec,
+          sourceFile
+        );
         updates.push({
-          kind: 'replace',
+          kind: "replace",
           index: importDeclaration.pos,
           length: importDeclaration.end - importDeclaration.pos,
           text,
         });
       } else {
         const comments =
-          ts.getLeadingCommentRanges(sourceFile.getFullText(), importDeclaration.pos) || [];
+          ts.getLeadingCommentRanges(
+            sourceFile.getFullText(),
+            importDeclaration.pos
+          ) || [];
         const index =
-          comments.length > 0 ? comments[comments.length - 1].end : importDeclaration.pos;
+          comments.length > 0
+            ? comments[comments.length - 1].end
+            : importDeclaration.pos;
         updates.push({
-          kind: 'delete',
+          kind: "delete",
           index,
           length: importDeclaration.end - index,
         });
@@ -230,9 +256,9 @@ export function updateImports(
                 ts.factory.createImportSpecifier(
                   false,
                   undefined,
-                  ts.factory.createIdentifier(cur.namedImport),
-                ),
-              ),
+                  ts.factory.createIdentifier(cur.namedImport)
+                )
+              )
             )
           : undefined;
 
@@ -246,10 +272,10 @@ export function updateImports(
               nameToAdd.length === 1
                 ? ts.factory.createIdentifier(nameToAdd[0].defaultImport)
                 : undefined,
-              namedImports,
+              namedImports
             ),
-            ts.factory.createStringLiteral(moduleSpecifier),
-          ),
+            ts.factory.createStringLiteral(moduleSpecifier)
+          )
         );
       } else {
         nodes.push(
@@ -257,8 +283,8 @@ export function updateImports(
             undefined,
             undefined,
             ts.factory.createImportClause(false, undefined, namedImports),
-            ts.factory.createStringLiteral(moduleSpecifier),
-          ),
+            ts.factory.createStringLiteral(moduleSpecifier)
+          )
         );
         nameToAdd.forEach((cur) => {
           nodes.push(
@@ -268,22 +294,24 @@ export function updateImports(
               ts.factory.createImportClause(
                 false,
                 ts.factory.createIdentifier(cur.defaultImport),
-                undefined,
+                undefined
               ),
-              ts.factory.createStringLiteral(moduleSpecifier),
-            ),
+              ts.factory.createStringLiteral(moduleSpecifier)
+            )
           );
         });
       }
     });
 
     const pos =
-      importDeclarations.length > 0 ? importDeclarations[importDeclarations.length - 1].end : 0;
+      importDeclarations.length > 0
+        ? importDeclarations[importDeclarations.length - 1].end
+        : 0;
     nodes.forEach((node, i) => {
       let text = printer.printNode(ts.EmitHint.Unspecified, node, sourceFile);
       if (pos > 0 || i > 0) text = `\n${text}`;
 
-      updates.push({ kind: 'insert', index: pos, text });
+      updates.push({ kind: "insert", index: pos, text });
     });
   }
 
@@ -307,18 +335,26 @@ function getUsedIdentifiers(sourceFile: ts.SourceFile) {
 }
 
 function getPresentedImportIdentifiers(sourceFile: ts.SourceFile) {
-  return sourceFile.statements.filter(ts.isImportDeclaration).reduce((presentedImports, item) => {
-    if (item.importClause) {
-      if (item.importClause.namedBindings && ts.isNamedImports(item.importClause.namedBindings)) {
-        item.importClause.namedBindings.elements.forEach(
-          (x) => x.name && presentedImports.add(x.name.escapedText.toString()),
-        );
-      } else if (item.importClause.name && ts.isIdentifier(item.importClause.name)) {
-        presentedImports.add(item.importClause.name.text);
+  return sourceFile.statements
+    .filter(ts.isImportDeclaration)
+    .reduce((presentedImports, item) => {
+      if (item.importClause) {
+        if (
+          item.importClause.namedBindings &&
+          ts.isNamedImports(item.importClause.namedBindings)
+        ) {
+          item.importClause.namedBindings.elements.forEach(
+            (x) => x.name && presentedImports.add(x.name.escapedText.toString())
+          );
+        } else if (
+          item.importClause.name &&
+          ts.isIdentifier(item.importClause.name)
+        ) {
+          presentedImports.add(item.importClause.name.text);
+        }
       }
-    }
-    return presentedImports;
-  }, new Set<string>());
+      return presentedImports;
+    }, new Set<string>());
 }
 
 function isDefaultImport(update: AnyImport): update is DefaultImport {
@@ -338,7 +374,9 @@ function isModuleImport(update: AnyImport): update is ModuleImport {
 }
 
 function uniqAddImportUpdates(updates: AddImport[]): AddImport[] {
-  const seen: { [moduleSpecifier: string]: { name: Set<string>; namedImport: Set<string> } } = {};
+  const seen: {
+    [moduleSpecifier: string]: { name: Set<string>; namedImport: Set<string> };
+  } = {};
 
   const initSeen = (moduleSpecifier: string) => {
     if (!seen[moduleSpecifier]) {
@@ -349,8 +387,10 @@ function uniqAddImportUpdates(updates: AddImport[]): AddImport[] {
   const isSeen = (update: DefaultImport | NamedImport) => {
     initSeen(update.moduleSpecifier);
     return (
-      (isDefaultImport(update) && seen[update.moduleSpecifier].name.has(update.defaultImport)) ||
-      (isNamedImport(update) && seen[update.moduleSpecifier].namedImport.has(update.namedImport))
+      (isDefaultImport(update) &&
+        seen[update.moduleSpecifier].name.has(update.defaultImport)) ||
+      (isNamedImport(update) &&
+        seen[update.moduleSpecifier].namedImport.has(update.namedImport))
     );
   };
 

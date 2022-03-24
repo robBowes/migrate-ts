@@ -1,9 +1,12 @@
-import ts from 'typescript';
-import { Plugin } from '../../../types';
-import { isDiagnosticWithLinePosition } from '../utils/type-guards';
-import getTokenAtPosition from './utils/token-pos';
-import { AnyAliasOptions, validateAnyAliasOptions } from '../utils/validateOptions';
-import UpdateTracker from './utils/update';
+import ts from "typescript";
+import { Plugin } from "../../../types";
+import { isDiagnosticWithLinePosition } from "../utils/type-guards";
+import getTokenAtPosition from "./utils/token-pos";
+import {
+  AnyAliasOptions,
+  validateAnyAliasOptions,
+} from "../utils/validateOptions";
+import UpdateTracker from "./utils/update";
 
 type Options = AnyAliasOptions;
 
@@ -15,7 +18,7 @@ const supportedDiagnostics = new Set([
 ]);
 
 const addConversionsPlugin: Plugin<Options> = {
-  name: 'add-conversions',
+  name: "add-conversions",
 
   run({ fileName, sourceFile, options, getLanguageService }) {
     // Filter out diagnostics we care about.
@@ -25,7 +28,9 @@ const addConversionsPlugin: Plugin<Options> = {
       .filter((diag) => supportedDiagnostics.has(diag.code));
 
     const updates = new UpdateTracker(sourceFile);
-    ts.transform(sourceFile, [addConversionsTransformerFactory(updates, diags, options)]);
+    ts.transform(sourceFile, [
+      addConversionsTransformerFactory(updates, diags, options),
+    ]);
     return updates.apply();
   },
 
@@ -35,7 +40,11 @@ const addConversionsPlugin: Plugin<Options> = {
 export default addConversionsPlugin;
 
 const addConversionsTransformerFactory =
-  (updates: UpdateTracker, diags: ts.DiagnosticWithLocation[], { anyAlias }: Options) =>
+  (
+    updates: UpdateTracker,
+    diags: ts.DiagnosticWithLocation[],
+    { anyAlias }: Options
+  ) =>
   (context: ts.TransformationContext) => {
     const { factory } = context;
     const anyType = anyAlias
@@ -64,7 +73,7 @@ const addConversionsTransformerFactory =
                 return null;
             }
           })
-          .filter((node): node is ts.Expression => node !== null),
+          .filter((node): node is ts.Expression => node !== null)
       );
       visit(file);
       return file;
@@ -112,22 +121,22 @@ const addConversionsTransformerFactory =
         case ts.SyntaxKind.WhileStatement:
           updates.replaceNode(
             (origNode as ExpressionChild).expression,
-            (newNode as ExpressionChild).expression,
+            (newNode as ExpressionChild).expression
           );
           break;
 
         case ts.SyntaxKind.ForStatement:
           updates.replaceNode(
             (origNode as ts.ForStatement).initializer,
-            (newNode as ts.ForStatement).initializer,
+            (newNode as ts.ForStatement).initializer
           );
           updates.replaceNode(
             (origNode as ts.ForStatement).condition,
-            (newNode as ts.ForStatement).condition,
+            (newNode as ts.ForStatement).condition
           );
           updates.replaceNode(
             (origNode as ts.ForStatement).incrementor,
-            (newNode as ts.ForStatement).incrementor,
+            (newNode as ts.ForStatement).incrementor
           );
           break;
 
@@ -135,11 +144,11 @@ const addConversionsTransformerFactory =
         case ts.SyntaxKind.ForOfStatement:
           updates.replaceNode(
             (origNode as ts.ForInOrOfStatement).expression,
-            (newNode as ts.ForInOrOfStatement).expression,
+            (newNode as ts.ForInOrOfStatement).expression
           );
           updates.replaceNode(
             (origNode as ts.ForInOrOfStatement).initializer,
-            (newNode as ts.ForInOrOfStatement).initializer,
+            (newNode as ts.ForInOrOfStatement).initializer
           );
           break;
 
@@ -175,5 +184,8 @@ function shouldReplace(node: ts.Node): boolean {
 }
 
 function isStatement(node: ts.Node): node is ts.Statement {
-  return ts.SyntaxKind.FirstStatement <= node.kind && node.kind <= ts.SyntaxKind.LastStatement;
+  return (
+    ts.SyntaxKind.FirstStatement <= node.kind &&
+    node.kind <= ts.SyntaxKind.LastStatement
+  );
 }

@@ -1,6 +1,6 @@
 /* eslint-disable */
 import ts from "typescript";
-import { Plugin } from '../../../types';
+import { Plugin } from "../../../types";
 import {
   isReactClassComponent,
   getReactComponentHeritageType,

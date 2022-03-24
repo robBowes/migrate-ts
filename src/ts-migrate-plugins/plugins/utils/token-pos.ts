@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import ts from "typescript";
 
 /**
  * Returns the token whose text contains the position.
@@ -7,7 +7,10 @@ import ts from 'typescript';
  * This function is adapted from TypeScript:
  * https://github.com/microsoft/TypeScript/blob/v4.1.3/src/services/utilities.ts#L1095
  */
-export default function getTokenAtPosition(sourceFile: ts.SourceFile, position: number): ts.Node {
+export default function getTokenAtPosition(
+  sourceFile: ts.SourceFile,
+  position: number
+): ts.Node {
   let current: ts.Node = sourceFile;
   // eslint-disable-next-line no-restricted-syntax, no-labels
   outer: while (true) {
@@ -21,7 +24,10 @@ export default function getTokenAtPosition(sourceFile: ts.SourceFile, position: 
       }
 
       const end = child.getEnd();
-      if (position < end || (position === end && child.kind === ts.SyntaxKind.EndOfFileToken)) {
+      if (
+        position < end ||
+        (position === end && child.kind === ts.SyntaxKind.EndOfFileToken)
+      ) {
         current = child;
         // eslint-disable-next-line no-continue, no-labels
         continue outer;

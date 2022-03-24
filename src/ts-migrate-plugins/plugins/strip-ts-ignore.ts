@@ -1,12 +1,16 @@
 /* eslint-disable no-use-before-define, @typescript-eslint/no-use-before-define */
-import ts from 'typescript';
-import { Plugin } from '../../../types';
-import updateSourceText, { SourceTextUpdate } from '../utils/updateSourceText';
+import ts from "typescript";
+import { Plugin } from "../../../types";
+import updateSourceText, { SourceTextUpdate } from "../utils/updateSourceText";
 
 const stripTSIgnorePlugin: Plugin = {
-  name: 'strip-ts-ignore',
+  name: "strip-ts-ignore",
   run({ text, fileName }) {
-    const sourceFile = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest);
+    const sourceFile = ts.createSourceFile(
+      fileName,
+      text,
+      ts.ScriptTarget.Latest
+    );
     return getTextWithoutIgnores(sourceFile);
   },
 };
@@ -35,22 +39,29 @@ function getTextWithoutIgnores(sourceFile: ts.SourceFile): string {
     const node = findNodeAtPos(sourceFile, matchPos);
     if (node && !ts.isJsxText(node)) {
       const commentRanges = getCommentRanges(text, node.pos).filter((range) =>
-        isInRange(matchPos, range),
+        isInRange(matchPos, range)
       );
 
       if (commentRanges.length > 0) {
         commentRanges.forEach((range) => {
           const { pos, end } = expandToWhitespace(text, range);
-          updates.push({ kind: 'delete', index: pos, length: end - pos });
+          updates.push({ kind: "delete", index: pos, length: end - pos });
         });
       } else {
         const printedWithoutComments = printWithoutComments(node);
         const inTemplate = ts.isTemplateLiteralToken(node);
-        if (ts.isJsxExpression(node) && printedWithoutComments === '') {
+        if (ts.isJsxExpression(node) && printedWithoutComments === "") {
           const { pos, end } = expandToWhitespace(text, node);
-          updates.push({ kind: 'delete', index: pos, length: end - pos });
-        } else if (!inTemplate && /^ *\/\/ *@ts-(?:ignore|expect-error)\b/.test(lineText)) {
-          updates.push({ kind: 'delete', index: lineStart, length: lineEnd - lineStart });
+          updates.push({ kind: "delete", index: pos, length: end - pos });
+        } else if (
+          !inTemplate &&
+          /^ *\/\/ *@ts-(?:ignore|expect-error)\b/.test(lineText)
+        ) {
+          updates.push({
+            kind: "delete",
+            index: lineStart,
+            length: lineEnd - lineStart,
+          });
         }
       }
     }
@@ -59,7 +70,10 @@ function getTextWithoutIgnores(sourceFile: ts.SourceFile): string {
   return updateSourceText(text, updates);
 }
 
-function findNodeAtPos(sourceFile: ts.SourceFile, pos: number): ts.Node | undefined {
+function findNodeAtPos(
+  sourceFile: ts.SourceFile,
+  pos: number
+): ts.Node | undefined {
   const visitor = (node: ts.Node): ts.Node | undefined =>
     ts.forEachChild(node, visitor) || (isInRange(pos, node) ? node : undefined);
 
@@ -72,7 +86,7 @@ function isInRange(pos: number, range: ts.TextRange): boolean {
 
 function expandToWhitespace(text: string, range: ts.TextRange): ts.TextRange {
   let { pos } = range;
-  while (pos > 0 && text[pos - 1] === ' ') {
+  while (pos > 0 && text[pos - 1] === " ") {
     pos -= 1;
   }
 

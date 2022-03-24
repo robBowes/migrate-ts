@@ -1,21 +1,24 @@
-import ts from 'typescript';
-import { Plugin } from '../../../types';
+import ts from "typescript";
+import { Plugin } from "../../../types";
 import {
   isReactClassComponent,
   getReactComponentHeritageType,
   getNumComponentsInSourceFile,
-} from './utils/react';
-import { collectIdentifiers } from './utils/identifiers';
-import updateSourceText, { SourceTextUpdate } from '../utils/updateSourceText';
-import { AnyAliasOptions, validateAnyAliasOptions } from '../utils/validateOptions';
+} from "./utils/react";
+import { collectIdentifiers } from "./utils/identifiers";
+import updateSourceText, { SourceTextUpdate } from "../utils/updateSourceText";
+import {
+  AnyAliasOptions,
+  validateAnyAliasOptions,
+} from "../utils/validateOptions";
 
 type Options = AnyAliasOptions;
 
 const reactClassStatePlugin: Plugin<Options> = {
-  name: 'react-class-state',
+  name: "react-class-state",
 
   async run({ fileName, sourceFile, options }) {
-    if (!fileName.endsWith('.tsx')) return undefined;
+    if (!fileName.endsWith(".tsx")) return undefined;
 
     const updates: SourceTextUpdate[] = [];
     const printer = ts.createPrinter();
@@ -29,20 +32,25 @@ const reactClassStatePlugin: Plugin<Options> = {
     const usedIdentifiers = collectIdentifiers(sourceFile);
 
     reactClassDeclarations.forEach((classDeclaration) => {
-      const componentName = (classDeclaration.name && classDeclaration.name.text) || 'Component';
+      const componentName =
+        (classDeclaration.name && classDeclaration.name.text) || "Component";
       const heritageType = getReactComponentHeritageType(classDeclaration)!;
       const heritageTypeArgs = heritageType.typeArguments || [];
       const propsType = heritageTypeArgs[0];
       const stateType = heritageTypeArgs[1];
 
       const getStateTypeName = () => {
-        let name = '';
-        if (propsType && ts.isTypeReferenceNode(propsType) && ts.isIdentifier(propsType.typeName)) {
-          name = propsType.typeName.text.replace('Props', 'State');
+        let name = "";
+        if (
+          propsType &&
+          ts.isTypeReferenceNode(propsType) &&
+          ts.isIdentifier(propsType.typeName)
+        ) {
+          name = propsType.typeName.text.replace("Props", "State");
         } else if (numComponentsInFile > 1) {
           name = `${componentName}State`;
         } else {
-          name = 'State';
+          name = "State";
         }
 
         if (!usedIdentifiers.has(name)) {
@@ -68,26 +76,34 @@ const reactClassStatePlugin: Plugin<Options> = {
           undefined,
           stateTypeName,
           undefined,
-          anyType,
+          anyType
         );
 
         updates.push({
-          kind: 'insert',
+          kind: "insert",
           index: classDeclaration.pos,
-          text: `\n\n${printer.printNode(ts.EmitHint.Unspecified, newStateType, sourceFile)}`,
+          text: `\n\n${printer.printNode(
+            ts.EmitHint.Unspecified,
+            newStateType,
+            sourceFile
+          )}`,
         });
 
         updates.push({
-          kind: 'replace',
+          kind: "replace",
           index: heritageType.pos,
           length: heritageType.end - heritageType.pos,
           text: ` ${printer.printNode(
             ts.EmitHint.Unspecified,
-            ts.factory.updateExpressionWithTypeArguments(heritageType, heritageType.expression, [
-              propsType || ts.factory.createTypeLiteralNode([]),
-              ts.factory.createTypeReferenceNode(stateTypeName, undefined),
-            ]),
-            sourceFile,
+            ts.factory.updateExpressionWithTypeArguments(
+              heritageType,
+              heritageType.expression,
+              [
+                propsType || ts.factory.createTypeLiteralNode([]),
+                ts.factory.createTypeReferenceNode(stateTypeName, undefined),
+              ]
+            ),
+            sourceFile
           )}`,
         });
       }
@@ -106,7 +122,7 @@ function usesState(classDeclaration: ts.ClassDeclaration): boolean {
     if (
       ts.isPropertyAccessExpression(node) &&
       node.expression.kind === ts.SyntaxKind.ThisKeyword &&
-      node.name.text === 'state'
+      node.name.text === "state"
     ) {
       return true;
     }
@@ -115,7 +131,7 @@ function usesState(classDeclaration: ts.ClassDeclaration): boolean {
       ts.isCallExpression(node) &&
       ts.isPropertyAccessExpression(node.expression) &&
       node.expression.expression.kind === ts.SyntaxKind.ThisKeyword &&
-      node.expression.name.text === 'setState'
+      node.expression.name.text === "setState"
     ) {
       return true;
     }

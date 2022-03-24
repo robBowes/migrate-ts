@@ -1,5 +1,7 @@
-import ts from 'typescript';
-import updateSourceText, { SourceTextUpdate } from '../../utils/updateSourceText';
+import ts from "typescript";
+import updateSourceText, {
+  SourceTextUpdate,
+} from "../../utils/updateSourceText";
 
 /**
  * Tracks updates to a ts.SourceFile as text changes.
@@ -17,7 +19,7 @@ class UpdateTracker {
 
   private insert(pos: number, text: string): void {
     this.updates.push({
-      kind: 'insert',
+      kind: "insert",
       index: pos,
       text,
     });
@@ -27,7 +29,10 @@ class UpdateTracker {
    * Adds a return type annotation to a function.
    * replaceNode would require reprinting the entire function body, losing all whitespace details.
    */
-  public addReturnAnnotation(node: ts.SignatureDeclaration, type: ts.TypeNode): void {
+  public addReturnAnnotation(
+    node: ts.SignatureDeclaration,
+    type: ts.TypeNode
+  ): void {
     const paren = node
       .getChildren(this.sourceFile)
       .find((node) => node.kind === ts.SyntaxKind.CloseParenToken);
@@ -39,39 +44,53 @@ class UpdateTracker {
       // Add parentheses.
       pos = node.parameters.end;
       const [param] = node.parameters;
-      this.insert(param.getStart(), '(');
-      this.insert(pos, ')');
+      this.insert(param.getStart(), "(");
+      this.insert(pos, ")");
     }
-    const text = this.printer.printNode(ts.EmitHint.Unspecified, type, this.sourceFile);
+    const text = this.printer.printNode(
+      ts.EmitHint.Unspecified,
+      type,
+      this.sourceFile
+    );
     this.insert(pos, `: ${text}`);
   }
 
-  public insertNodes<T extends ts.Node>(pos: number, nodes: ts.NodeArray<T>): void {
-    const text = this.printer.printList(ts.ListFormat.SpaceAfterList, nodes, this.sourceFile);
+  public insertNodes<T extends ts.Node>(
+    pos: number,
+    nodes: ts.NodeArray<T>
+  ): void {
+    const text = this.printer.printList(
+      ts.ListFormat.SpaceAfterList,
+      nodes,
+      this.sourceFile
+    );
     this.insert(pos, text);
   }
 
   private replace(pos: number, length: number, text: string): void {
     this.updates.push({
-      kind: 'replace',
+      kind: "replace",
       index: pos,
       length,
       text,
     });
   }
 
-  public replaceNode(oldNode: ts.Node | undefined, newNode: ts.Node | undefined): void {
+  public replaceNode(
+    oldNode: ts.Node | undefined,
+    newNode: ts.Node | undefined
+  ): void {
     if (oldNode && newNode && oldNode !== newNode) {
       const printedNextNode = this.printer.printNode(
         ts.EmitHint.Unspecified,
         newNode,
-        this.sourceFile,
+        this.sourceFile
       );
       const text = oldNode
         .getFullText(this.sourceFile)
         .replace(/^(\s*)[^]*?(\s*)$/, `$1${printedNextNode}$2`);
       this.updates.push({
-        kind: 'replace',
+        kind: "replace",
         index: oldNode.pos,
         length: oldNode.end - oldNode.pos,
         text,
@@ -82,13 +101,25 @@ class UpdateTracker {
   public replaceNodes<T extends ts.Node>(
     oldNodes: ts.NodeArray<T>,
     newNodes: ts.NodeArray<T>,
-    addParens = false,
+    addParens = false
   ): void {
     if (oldNodes !== newNodes) {
-      const listFormat = addParens ? ts.ListFormat.Parenthesis : ts.ListFormat.CommaListElements;
-      const printedNextNode = this.printer.printList(listFormat, newNodes, this.sourceFile);
-      const prevText = this.sourceFile.text.substring(oldNodes.pos, oldNodes.end);
-      const text = prevText.replace(/^(\s*)[^]*?(\s*)$/, `$1${printedNextNode}$2`);
+      const listFormat = addParens
+        ? ts.ListFormat.Parenthesis
+        : ts.ListFormat.CommaListElements;
+      const printedNextNode = this.printer.printList(
+        listFormat,
+        newNodes,
+        this.sourceFile
+      );
+      const prevText = this.sourceFile.text.substring(
+        oldNodes.pos,
+        oldNodes.end
+      );
+      const text = prevText.replace(
+        /^(\s*)[^]*?(\s*)$/,
+        `$1${printedNextNode}$2`
+      );
       this.replace(oldNodes.pos, oldNodes.end - oldNodes.pos, text);
     }
   }

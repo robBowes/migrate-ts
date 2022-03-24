@@ -1,4 +1,4 @@
-declare module 'loglevel' {
+declare module "loglevel" {
   const log: {
     error: (...msg: any[]) => void;
     important: (...msg: any[]) => void;

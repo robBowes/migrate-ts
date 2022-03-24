@@ -1,22 +1,34 @@
-import jscodeshift, { Identifier, TSTypeAnnotation } from 'jscodeshift';
-import { Collection } from 'jscodeshift/src/Collection';
+import jscodeshift, { Identifier, TSTypeAnnotation } from "jscodeshift";
+import { Collection } from "jscodeshift/src/Collection";
+import { forEach } from "lodash";
 // import log from 'loglevel';
-import ts from 'typescript';
-import { Plugin } from '../../../types';
-import { isDiagnosticWithLinePosition } from '../utils/type-guards';
-import { AnyAliasOptions, validateAnyAliasOptions } from '../utils/validateOptions';
+import ts from "typescript";
+import { Plugin } from "../../../types";
+import { isDiagnosticWithLinePosition } from "../utils/type-guards";
+import {
+  AnyAliasOptions,
+  validateAnyAliasOptions,
+} from "../utils/validateOptions";
 
 type Options = AnyAliasOptions;
 
+const importsToAdd: Record<string, () => void> = {};
 const explicitAnyPlugin: Plugin<Options> = {
-  name: 'explicit-any',
+  name: "explicit-any",
 
   run({ options, fileName, text, getLanguageService, sourceFile }) {
-    const semanticDiagnostics = getLanguageService().getSemanticDiagnostics(fileName);
+    const semanticDiagnostics =
+      getLanguageService().getSemanticDiagnostics(fileName);
     const diagnostics = semanticDiagnostics
       .filter(isDiagnosticWithLinePosition)
       .filter((d) => d.category === ts.DiagnosticCategory.Error);
-    return withExplicitAny(text, diagnostics, options.anyAlias, sourceFile);
+    const root = withExplicitAny(
+      text,
+      diagnostics,
+      options.anyAlias,
+      sourceFile
+    );
+    forEach(importsToAdd, fn => fn());
   },
 
   validate: validateAnyAliasOptions,
@@ -24,62 +36,67 @@ const explicitAnyPlugin: Plugin<Options> = {
 
 export default explicitAnyPlugin;
 
-const j = jscodeshift.withParser('tsx');
+const j = jscodeshift.withParser("tsx");
 
 function withExplicitAny(
   text: string,
   diagnostics: ts.DiagnosticWithLocation[],
   anyAlias: string,
-  sourceFile: ts.SourceFile,
-): string {
+  sourceFile: ts.SourceFile
+) {
   const root = j(text);
 
-  const anyType = anyAlias != null ? j.tsTypeReference(j.identifier(anyAlias)) : j.tsAnyKeyword();
+  const anyType =
+    anyAlias != null
+      ? j.tsTypeReference(j.identifier(anyAlias))
+      : j.tsAnyKeyword();
   const typeAnnotation = j.tsTypeAnnotation(anyType);
   replaceTS2683(
     root,
     diagnostics.filter((diagnostic) => diagnostic.code === 2683),
-    typeAnnotation,
+    typeAnnotation
   );
   replaceTS7006AndTS7008(
     root,
-    diagnostics.filter((diagnostic) => diagnostic.code === 7006 || diagnostic.code === 7008),
+    diagnostics.filter(
+      (diagnostic) => diagnostic.code === 7006 || diagnostic.code === 7008
+    ),
     typeAnnotation,
-    sourceFile,
+    sourceFile
   );
   replaceTS7019(
     root,
     diagnostics.filter((diagnostic) => diagnostic.code === 7019),
-    j.tsTypeAnnotation(j.tsArrayType(anyType)),
+    j.tsTypeAnnotation(j.tsArrayType(anyType))
   );
   replaceTS7031(
     root,
     diagnostics.filter((diagnostic) => diagnostic.code === 7031),
-    typeAnnotation,
+    typeAnnotation
   );
   replaceTS7034(
     root,
     diagnostics.filter((diagnostic) => diagnostic.code === 7034),
-    typeAnnotation,
+    typeAnnotation
   );
   replaceTS2459(
     root,
     diagnostics.filter((diagnostic) => diagnostic.code === 2459),
-    typeAnnotation,
+    typeAnnotation
   );
   replaceTS2525(
     root,
     diagnostics.filter((diagnostic) => diagnostic.code === 2525),
-    typeAnnotation,
+    typeAnnotation
   );
-  return root.toSource();
+  return root;
 }
 
 // TS2683: "'this' implicitly has type 'any' because it does not have a type annotation."
 function replaceTS2683(
   root: Collection<any>,
   diagnostics: ts.DiagnosticWithLocation[],
-  typeAnnotation: TSTypeAnnotation,
+  typeAnnotation: TSTypeAnnotation
 ) {
   const annotated = new Set();
 
@@ -88,7 +105,8 @@ function replaceTS2683(
       .find(
         j.ThisExpression,
         (node: any) =>
-          node.start === diagnostic.start && node.end === diagnostic.start + diagnostic.length,
+          node.start === diagnostic.start &&
+          node.end === diagnostic.start + diagnostic.length
       )
       .forEach((path) => {
         let newNode = path.parentPath;
@@ -103,7 +121,9 @@ function replaceTS2683(
 
         // Add annotation only if we haven't already added one to this function.
         if (!annotated.has(newNode)) {
-          newNode.get('params').unshift(j.identifier.from({ name: 'this', typeAnnotation }));
+          newNode
+            .get("params")
+            .unshift(j.identifier.from({ name: "this", typeAnnotation }));
           annotated.add(newNode);
         }
       });
@@ -116,9 +136,11 @@ function replaceTS7006AndTS7008(
   root: Collection<any>,
   diagnostics: ts.DiagnosticWithLocation[],
   typeAnnotation: TSTypeAnnotation,
-  sourceFile: ts.SourceFile,
+  sourceFile: ts.SourceFile
 ) {
-  const importDeclarations = sourceFile.statements.filter(ts.isImportDeclaration);
+  const importDeclarations = sourceFile.statements.filter(
+    ts.isImportDeclaration
+  );
   const printer = ts.createPrinter();
   diagnostics.forEach((diagnostic) => {
     root
@@ -127,7 +149,7 @@ function replaceTS7006AndTS7008(
         (node: any) =>
           node.start === diagnostic.start &&
           node.end === diagnostic.start + diagnostic.length &&
-          node.typeAnnotation == null,
+          node.typeAnnotation == null
       )
       .forEach((path) => {
         let replaceArrow = false;
@@ -136,60 +158,64 @@ function replaceTS7006AndTS7008(
         const insertImport = (name: string, path: string) => {
           if (
             !importDeclarations.some((importDeclaration) =>
-              new RegExp(name).test(importDeclaration.moduleSpecifier.getText()),
-            )
+              new RegExp(name).test(importDeclaration.moduleSpecifier.getText())
+            ) &&
+            !importsToAdd[name]
           ) {
-            root
-              .find(j.ImportDeclaration)
-              .at(0)
-              .insertBefore(
-                `${printer.printNode(
-                  ts.EmitHint.Unspecified,
-                  getImport(name, path),
-                  sourceFile,
-                )}\n`,
-              );
+            importsToAdd[name] = () =>
+              root
+                .find(j.ImportDeclaration)
+                .at(0)
+                .insertBefore(
+                  `${printer.printNode(
+                    ts.EmitHint.Unspecified,
+                    getImport(name, path),
+                    sourceFile
+                  )}\n`
+                );
           }
         };
 
         const getTypeAnnotation = (): TSTypeAnnotation => {
           switch (path.value.name) {
-            case 'slug':
-            case 'storefrontUuid':
-            case 'venueUuid':
-            case 'venueId':
-            case 'spaceUuid':
-            case 'message':
-            case 'uuid': {
-              const type = j.tsTypeReference(j.identifier('string'));
+            case "slug":
+            case "key":
+            case "storefrontUuid":
+            case "venueUuid":
+            case "venueId":
+            case "spaceUuid":
+            case "message":
+            case "uuid": {
+              const type = j.tsTypeReference(j.identifier("string"));
               const typeAnnotation = j.tsTypeAnnotation(type);
               return typeAnnotation;
             }
-            case 'dispatch': {
-              const type = j.tsTypeReference(j.identifier('AppDispatch'));
+            case "dispatch": {
+              const type = j.tsTypeReference(j.identifier("AppDispatch"));
               const typeAnnotation = j.tsTypeAnnotation(type);
-              insertImport('AppDispatch', '~/reducers');
+              insertImport("AppDispatch", "~/reducers");
               return typeAnnotation;
             }
-            case 'error': {
-              const type = j.tsTypeReference(j.identifier('Error'));
+            case "error": {
+              const type = j.tsTypeReference(j.identifier("Error"));
               const typeAnnotation = j.tsTypeAnnotation(type);
               return typeAnnotation;
             }
-            case 'getState': {
-              const type = j.tsTypeReference(j.identifier('GetState'));
+            case "getState": {
+              const type = j.tsTypeReference(j.identifier("GetState"));
               const typeAnnotation = j.tsTypeAnnotation(type);
-              insertImport('GetState', '~/reducers');
+              insertImport("GetState", "~/reducers");
               return typeAnnotation;
             }
-            case 'state': {
-              const type = j.tsTypeReference(j.identifier('RootState'));
+            case "state": {
+              const type = j.tsTypeReference(j.identifier("RootState"));
               const typeAnnotation = j.tsTypeAnnotation(type);
-              insertImport('RootState', '~/reducers/rootState');
+              insertImport("RootState", "~/reducers/rootState");
               return typeAnnotation;
             }
-            case 'index': {
-              const type = j.tsTypeReference(j.identifier('number'));
+            case "taxonomyNodeId":
+            case "index": {
+              const type = j.tsTypeReference(j.identifier("number"));
               const typeAnnotation = j.tsTypeAnnotation(type);
               return typeAnnotation;
             }
@@ -226,13 +252,12 @@ function replaceTS7006AndTS7008(
                 ...parentNode,
                 params,
                 body,
-              }),
+              })
             );
           }
         }
-
         if (!replaceArrow) {
-          path.get('typeAnnotation').replace(getTypeAnnotation());
+          path.get("typeAnnotation").replace(getTypeAnnotation());
         }
       });
   });
@@ -242,7 +267,7 @@ function replaceTS7006AndTS7008(
 function replaceTS7019(
   root: Collection<any>,
   diagnostics: ts.DiagnosticWithLocation[],
-  typeAnnotation: TSTypeAnnotation,
+  typeAnnotation: TSTypeAnnotation
 ) {
   diagnostics.forEach((diagnostic) => {
     root
@@ -251,10 +276,10 @@ function replaceTS7019(
         (node: any) =>
           node.start === diagnostic.start &&
           node.end === diagnostic.start + diagnostic.length &&
-          node.typeAnnotation == null,
+          node.typeAnnotation == null
       )
       .forEach((path) => {
-        path.get('typeAnnotation').replace(typeAnnotation);
+        path.get("typeAnnotation").replace(typeAnnotation);
       });
   });
 }
@@ -263,7 +288,7 @@ function replaceTS7019(
 function replaceTS7031(
   root: Collection<any>,
   diagnostics: ts.DiagnosticWithLocation[],
-  typeAnnotation: TSTypeAnnotation,
+  typeAnnotation: TSTypeAnnotation
 ) {
   const getParentObjectPattern = (path: any) => {
     let res = path;
@@ -285,12 +310,12 @@ function replaceTS7031(
           (property: any) =>
             property.start === diagnostic.start &&
             property.end === diagnostic.start + diagnostic.length &&
-            j.ObjectProperty.check(property),
+            j.ObjectProperty.check(property)
         );
         if (propertyIndex !== -1) {
           const objectPattern = getParentObjectPattern(path);
           if (objectPattern.node.typeAnnotation == null) {
-            objectPattern.get('typeAnnotation').replace(typeAnnotation);
+            objectPattern.get("typeAnnotation").replace(typeAnnotation);
           }
         }
       }
@@ -302,7 +327,7 @@ function replaceTS7031(
 function replaceTS7034(
   root: Collection<any>,
   diagnostics: ts.DiagnosticWithLocation[],
-  typeAnnotation: TSTypeAnnotation,
+  typeAnnotation: TSTypeAnnotation
 ) {
   diagnostics.forEach((diagnostic) => {
     root
@@ -311,7 +336,7 @@ function replaceTS7034(
         (path: any) =>
           path.node.start === diagnostic.start &&
           path.node.end === diagnostic.start + diagnostic.length &&
-          path.node.typeAnnotation == null,
+          path.node.typeAnnotation == null
       )
       .forEach((path) => {
         if (
@@ -319,7 +344,7 @@ function replaceTS7034(
           !j.ImportDefaultSpecifier.check(path.parent.node) &&
           !j.ImportNamespaceSpecifier.check(path.parent.node)
         ) {
-          path.get('typeAnnotation').replace(typeAnnotation);
+          path.get("typeAnnotation").replace(typeAnnotation);
         }
       });
   });
@@ -329,7 +354,7 @@ function replaceTS7034(
 function replaceTS2459(
   root: Collection<any>,
   diagnostics: ts.DiagnosticWithLocation[],
-  typeAnnotation: TSTypeAnnotation,
+  typeAnnotation: TSTypeAnnotation
 ) {
   diagnostics.forEach((diagnostic) => {
     root
@@ -338,19 +363,22 @@ function replaceTS2459(
         (path: any) =>
           path.node.start === diagnostic.start &&
           path.node.end === diagnostic.start + diagnostic.length &&
-          path.node.typeAnnotation == null,
+          path.node.typeAnnotation == null
       )
       .forEach((path) => {
         let newNode = path.parentPath;
         // The error will only provide the location of the left hand side identifier
         // so we have to find the variable declarator by traveling back up
-        while (newNode.parentPath && !j.VariableDeclarator.check(newNode.node)) {
+        while (
+          newNode.parentPath &&
+          !j.VariableDeclarator.check(newNode.node)
+        ) {
           newNode = newNode.parentPath;
         }
-        if (newNode.get('init')) {
+        if (newNode.get("init")) {
           // init returns the right hand side identifier
-          const rightHandSideNodePath = newNode.get('init');
-          const name = rightHandSideNodePath.getValueProperty('name');
+          const rightHandSideNodePath = newNode.get("init");
+          const name = rightHandSideNodePath.getValueProperty("name");
           let { scope } = rightHandSideNodePath;
           // we check if the current scope declares the identifier
           // if not we move up to the parent scope
@@ -365,7 +393,7 @@ function replaceTS2459(
               binding.parentPath.node.right.properties.length === 0 &&
               binding.node.typeAnnotation == null
             ) {
-              binding.get('typeAnnotation').replace(typeAnnotation);
+              binding.get("typeAnnotation").replace(typeAnnotation);
             }
           }
         }
@@ -377,7 +405,7 @@ function replaceTS2459(
 function replaceTS2525(
   root: Collection<any>,
   diagnostics: ts.DiagnosticWithLocation[],
-  typeAnnotation: TSTypeAnnotation,
+  typeAnnotation: TSTypeAnnotation
 ) {
   diagnostics.forEach((diagnostic) => {
     root
@@ -386,19 +414,28 @@ function replaceTS2525(
         (path: any) =>
           path.node.start === diagnostic.start &&
           path.node.end === diagnostic.start + diagnostic.length &&
-          path.node.typeAnnotation == null,
+          path.node.typeAnnotation == null
       )
       .forEach((path) => {
-        const potentialObjDestructionNode = path.parentPath.parentPath.parentPath;
+        const potentialObjDestructionNode =
+          path.parentPath.parentPath.parentPath;
         if (
           j.ObjectPattern.check(potentialObjDestructionNode.node) &&
-          (j.AssignmentPattern.check(potentialObjDestructionNode.parentPath.node) ||
-            j.VariableDeclarator.check(potentialObjDestructionNode.parentPath.node)) &&
+          (j.AssignmentPattern.check(
+            potentialObjDestructionNode.parentPath.node
+          ) ||
+            j.VariableDeclarator.check(
+              potentialObjDestructionNode.parentPath.node
+            )) &&
           // to prevent adding a type to the obj destruction inside of the destruction
-          !j.ObjectProperty.check(potentialObjDestructionNode.parentPath.parentPath.node) &&
+          !j.ObjectProperty.check(
+            potentialObjDestructionNode.parentPath.parentPath.node
+          ) &&
           potentialObjDestructionNode.node.typeAnnotation == null
         ) {
-          potentialObjDestructionNode.get('typeAnnotation').replace(typeAnnotation);
+          potentialObjDestructionNode
+            .get("typeAnnotation")
+            .replace(typeAnnotation);
         }
       });
   });
@@ -414,9 +451,13 @@ function getImport(name: string, path: string) {
       false,
       undefined,
       ts.factory.createNamedImports([
-        ts.factory.createImportSpecifier(false, undefined, ts.factory.createIdentifier(name)),
-      ]),
+        ts.factory.createImportSpecifier(
+          false,
+          undefined,
+          ts.factory.createIdentifier(name)
+        ),
+      ])
     ),
-    ts.factory.createStringLiteral(path),
+    ts.factory.createStringLiteral(path)
   );
 }

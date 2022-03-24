@@ -1,4 +1,4 @@
-import { performance } from 'perf_hooks';
+import { performance } from "perf_hooks";
 
 export default class PerfTimer {
   private start = performance.now();
