@@ -28,7 +28,8 @@ const explicitAnyPlugin: Plugin<Options> = {
       options.anyAlias,
       sourceFile
     );
-    forEach(importsToAdd, fn => fn());
+    forEach(importsToAdd, (fn) => fn());
+    return root.toSource();
   },
 
   validate: validateAnyAliasOptions,
