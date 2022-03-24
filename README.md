@@ -4,25 +4,10 @@ A modified version of [ts-migrate](https://github.com/airbnb/ts-migrate) designe
 
 ## To use:
 
-Install the package
-
-```
-npm i migrate-ts -D
-```
-
-Add the cli to your package.json scripts
-
-```
-...
-  "scripts": {
-    "migrate-ts": "migrate-ts",
-...
-```
-
 Run the script
 
 ```
-npm run migrate-ts -- migrate ./ --sources "<relative filename>" [flags]
+npx migrate-ts migrate ./ --sources "<relative filename>" [flags]
 ```
 
 ## Flags
@@ -38,25 +23,25 @@ npm run migrate-ts -- migrate ./ --sources "<relative filename>" [flags]
 Migrate a single javascript file
 
 ```
- npm run ts-migrate -- migrate ./ --sources "./src/pages/LegacyComponent.jsx" --rename
+ npx ts-migrate migrate ./ --sources "./src/pages/LegacyComponent.jsx" --rename
 ```
 
 Migrate a folder of js files
 
 ```
-npm run ts-migrate -- migrate ./ --sources "./src/pages/*.jsx" --rename
+npx ts-migrate migrate ./ --sources "./src/pages/*.jsx" --rename
 ```
 
 Migrate a folder of js files and add ignore comments
 
 ```
-npm run ts-migrate -- migrate ./ --sources "./src/pages/*.jsx" --rename --ignore
+npx ts-migrate migrate ./ --sources "./src/pages/*.jsx" --rename --ignore
 ```
 
 Migrate a single ts file and re-add ignore comments
 
 ```
-npm run ts-migrate -- migrate ./ --sources "./src/pages/tsFile.ts" --ignore --reignore
+npx ts-migrate migrate ./ --sources "./src/pages/tsFile.ts" --ignore --reignore
 ```
 
 # License
