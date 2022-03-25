@@ -12,14 +12,14 @@ import {
   declareMissingClassPropertiesPlugin,
   eslintFixPlugin,
   explicitAnyPlugin,
-  // hoistClassStaticsPlugin,
+  hoistClassStaticsPlugin,
   jsDocPlugin,
-  // memberAccessibilityPlugin,
+  memberAccessibilityPlugin,
   reactClassLifecycleMethodsPlugin,
   reactClassStatePlugin,
-  // reactDefaultPropsPlugin,
+  reactDefaultPropsPlugin,
   reactPropsPlugin,
-  // reactShapePlugin,
+  reactShapePlugin,
   stripTSIgnorePlugin,
   tsIgnorePlugin,
   Plugin,
@@ -27,22 +27,22 @@ import {
 import { migrate, MigrateConfig } from "./index";
 import renameFunction from "./rename";
 
-// const availablePlugins = [
-//   addConversionsPlugin,
-//   declareMissingClassPropertiesPlugin,
-//   eslintFixPlugin,
-//   explicitAnyPlugin,
-//   hoistClassStaticsPlugin,
-//   jsDocPlugin,
-//   memberAccessibilityPlugin,
-//   reactClassLifecycleMethodsPlugin,
-//   reactClassStatePlugin,
-//   reactDefaultPropsPlugin,
-//   reactPropsPlugin,
-//   reactShapePlugin,
-//   stripTSIgnorePlugin,
-//   tsIgnorePlugin,
-// ];
+const availablePlugins = {
+  addConversionsPlugin,
+  declareMissingClassPropertiesPlugin,
+  eslintFixPlugin,
+  explicitAnyPlugin,
+  hoistClassStaticsPlugin,
+  jsDocPlugin,
+  memberAccessibilityPlugin,
+  reactClassLifecycleMethodsPlugin,
+  reactClassStatePlugin,
+  reactDefaultPropsPlugin,
+  reactPropsPlugin,
+  reactShapePlugin,
+  stripTSIgnorePlugin,
+  tsIgnorePlugin,
+};
 const renameSources = (string: string) =>
   string.replace(".jsx", ".tsx").replace(".js", ".ts");
 
@@ -81,6 +81,7 @@ yargs
         .positional("folder", { type: "string" })
 
         .string("sources")
+        .string("plugin")
         .boolean("rename")
         .boolean("ignore")
         .boolean("reignore")
@@ -117,8 +118,14 @@ yargs
 
       const anyAlias = "TSFixMe";
       const anyFunctionAlias = "TSFixMeFunction";
-
       const config = new MigrateConfig();
+
+      if (args.plugin) {
+        config.addPlugin(availablePlugins[args.plugin], { anyAlias });
+        const exitCode = await migrate({ rootDir, config, sources });
+        process.exit(exitCode);
+      }
+
       if (reignore) {
         config.addPlugin(stripTSIgnorePlugin, {});
       }

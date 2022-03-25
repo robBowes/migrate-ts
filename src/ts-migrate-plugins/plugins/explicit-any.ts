@@ -1,4 +1,4 @@
-import jscodeshift, { Identifier, SourceLocation, TSTypeAnnotation } from "jscodeshift";
+import jscodeshift, { Identifier, TSTypeAnnotation } from "jscodeshift";
 import { Collection } from "jscodeshift/src/Collection";
 import { forEach } from "lodash";
 // import log from 'loglevel';
@@ -13,6 +13,7 @@ import {
 type Options = AnyAliasOptions;
 
 const importsToAdd: Record<string, () => void> = {};
+const printer = ts.createPrinter();
 const explicitAnyPlugin: Plugin<Options> = {
   name: "explicit-any",
 
@@ -142,12 +143,11 @@ function replaceTS7006AndTS7008(
   const importDeclarations = sourceFile.statements.filter(
     ts.isImportDeclaration
   );
-  const printer = ts.createPrinter();
   diagnostics.forEach((diagnostic) => {
     root
       .find(
         j.Identifier,
-        (node) =>
+        (node: Identifier & Record<string, unknown>) =>
           node.start === diagnostic.start &&
           node.end === diagnostic.start + diagnostic.length &&
           node.typeAnnotation == null
@@ -164,16 +164,13 @@ function replaceTS7006AndTS7008(
             !importsToAdd[name]
           ) {
             importsToAdd[name] = () =>
-              root
-                .find(j.ImportDeclaration)
-                .at(0)
-                .insertBefore(
-                  `${printer.printNode(
-                    ts.EmitHint.Unspecified,
-                    getImport(name, path),
-                    sourceFile
-                  )}\n`
-                );
+              root.get().node.program.body.unshift(
+              `${printer.printNode(
+                ts.EmitHint.Unspecified,
+                getImport(name, path),
+                sourceFile
+              )}\n`
+            );
           }
         };
 

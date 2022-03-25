@@ -16,7 +16,8 @@
     "bootstrap": "echo 'not implemented'",
     "build": "tsc -p tsconfig.json",
     "prepublish": "npm run build",
-    "clean": "rm -rf build"
+    "clean": "rm -rf build",
+    "test": "jest --config jest-config.json"
   },
   "dependencies": {
     "@ts-morph/bootstrap": "^0.13.0",
