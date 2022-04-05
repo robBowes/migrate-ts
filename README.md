@@ -23,25 +23,25 @@ npx migrate-ts migrate ./ --sources "<relative filename>" [flags]
 Migrate a single javascript file
 
 ```
- npx ts-migrate migrate ./ --sources "./src/pages/LegacyComponent.jsx" --rename
+ npx ts-migrate ./src/pages/LegacyComponent.jsx --rename
 ```
 
 Migrate a folder of js files
 
 ```
-npx ts-migrate migrate ./ --sources "./src/pages/*.jsx" --rename
+npx ts-migrate ./src/pages/*.jsx --rename
 ```
 
 Migrate a folder of js files and add ignore comments
 
 ```
-npx ts-migrate migrate ./ --sources "./src/pages/*.jsx" --rename --ignore
+npx ts-migrate ./src/pages/*.jsx --rename --ignore
 ```
 
 Migrate a single ts file and re-add ignore comments
 
 ```
-npx ts-migrate migrate ./ --sources "./src/pages/tsFile.ts" --ignore --reignore
+npx ts-migrate ./src/pages/tsFile.ts --ignore --reignore
 ```
 
 # License

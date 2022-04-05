@@ -189,9 +189,7 @@ function replaceTS7006AndTS7008(
             case "spaceUuid":
             case "message":
             case "uuid": {
-              const type = j.tsTypeReference(j.identifier("string"));
-              const typeAnnotation = j.tsTypeAnnotation(type);
-              return typeAnnotation;
+              return createAnnotation('string');
             }
             case "dispatch": {
               const type = j.tsTypeReference(j.identifier("AppDispatch"));
@@ -264,6 +262,12 @@ function replaceTS7006AndTS7008(
         }
       });
   });
+}
+
+function createAnnotation(name: string) {
+  const type = j.tsTypeReference(j.identifier(name));
+  const typeAnnotation = j.tsTypeAnnotation(type);
+  return typeAnnotation;
 }
 
 // TS7019: "Rest parameter '{0}' implicitly has an 'any[]' type."
