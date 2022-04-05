@@ -102,7 +102,6 @@ yargs
         ),
     async (args) => {
       const rootDir = path.resolve(process.cwd());
-      console.log(args, rootDir);
       const { ignore, rename, reignore } = args;
       // eslint-disable-next-line prefer-destructuring
       let sources: string | string[] = args.sources;
@@ -114,7 +113,6 @@ yargs
         }
           sources = renameSources(sources);
       }
-      console.log(sources);
 
       const anyAlias = "TSFixMe";
       const anyFunctionAlias = "TSFixMeFunction";
