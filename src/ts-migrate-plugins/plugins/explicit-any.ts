@@ -29,7 +29,12 @@ const explicitAnyPlugin: Plugin<Options> = {
       options.anyAlias,
       sourceFile
     );
-    forEach(importsToAdd, (fn) => fn());
+    forEach(importsToAdd, (fn, key) => {
+      if (fn) {
+        fn();
+      }
+       importsToAdd[key] = undefined;
+    });
     return root.toSource();
   },
 

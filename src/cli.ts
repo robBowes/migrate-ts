@@ -43,8 +43,10 @@ const availablePlugins = {
   stripTSIgnorePlugin,
   tsIgnorePlugin,
 };
-const renameSources = (string: string) =>
-  string.replace(".jsx", ".tsx").replace(".js", ".ts");
+const renameSources = (sources: string | string[]) => {
+  const mapper = (source: string) => source.replace(".jsx", ".tsx").replace(".js", ".ts");
+  return Array.isArray(sources) ? sources.map(mapper) : mapper(sources);
+};
 
 // eslint-disable-next-line no-unused-expressions
 yargs
@@ -74,12 +76,10 @@ yargs
     }
   )
   .command(
-    "migrate [options] <folder>",
+    ["migrate [sources...]", '$0'],
     "Fix TypeScript errors, using codemods",
     (cmd) =>
       cmd
-        .positional("folder", { type: "string" })
-
         .string("sources")
         .string("plugin")
         .boolean("rename")
@@ -99,22 +99,22 @@ yargs
         .example(
           '$0 migrate /frontend/foo -s "bar/**/*" -s "node_modules/**/*.d.ts"',
           "Migrate all the files in /frontend/foo/bar, accounting for ambient types from node_modules."
-        )
-        .require(["folder"]),
+        ),
     async (args) => {
-      const rootDir = path.resolve(process.cwd(), args.folder);
+      const rootDir = path.resolve(process.cwd());
+      console.log(args, rootDir);
       const { ignore, rename, reignore } = args;
-      let { sources } = args;
+      // eslint-disable-next-line prefer-destructuring
+      let sources: string | string[] = args.sources;
 
       if (rename) {
         const renameExitCode = renameFunction({ rootDir, sources });
         if (renameExitCode !== 0) {
           process.exit(renameExitCode);
         }
-        if (typeof sources === "string") {
           sources = renameSources(sources);
-        }
       }
+      console.log(sources);
 
       const anyAlias = "TSFixMe";
       const anyFunctionAlias = "TSFixMeFunction";
