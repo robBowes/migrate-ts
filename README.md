@@ -7,7 +7,7 @@ A modified version of [ts-migrate](https://github.com/airbnb/ts-migrate) designe
 Run the script
 
 ```
-npx migrate-ts migrate ./ --sources "<relative filename>" [flags]
+npx migrate-ts <filename or glob> [flags]
 ```
 
 ## Flags
